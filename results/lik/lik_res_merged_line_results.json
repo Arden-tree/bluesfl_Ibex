@@ -1,0 +1,1562 @@
+[
+  {
+    "bug_id": "172",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_load_store_unit",
+        "line_number": 626,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "159",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_id_stage",
+        "line_number": 1158,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "62",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_prefetch_buffer",
+        "line_number": 151,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "71",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_compressed_decoder",
+        "line_number": 220,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "41",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_id_stage",
+        "line_number": 1158,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "21",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_fetch_fifo",
+        "line_number": 59,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "158",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_alu",
+        "line_number": 1402,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "8",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_multdiv_fast",
+        "line_number": 558,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "85",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_multdiv_fast",
+        "line_number": 558,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "12",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_wb_stage",
+        "line_number": 141,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "100",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_controller",
+        "line_number": 946,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "99",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_id_stage",
+        "line_number": 1158,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "152",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_fetch_fifo",
+        "line_number": 59,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "25",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_fetch_fifo",
+        "line_number": 106,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "48",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_alu",
+        "line_number": 1402,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "160",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_alu",
+        "line_number": 1402,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "22",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_decoder",
+        "line_number": 1215,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "138",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_alu",
+        "line_number": 1402,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "134",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_alu",
+        "line_number": 1402,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "156",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_alu",
+        "line_number": 1402,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "146",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_wb_stage",
+        "line_number": 241,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "60",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_if_stage",
+        "line_number": 815,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "142",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_wb_stage",
+        "line_number": 241,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "70",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_decoder",
+        "line_number": 1215,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "17",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_alu",
+        "line_number": 1402,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "140",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_controller",
+        "line_number": 946,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "44",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_alu",
+        "line_number": 1402,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "64",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_decoder",
+        "line_number": 1215,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "57",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_fetch_fifo",
+        "line_number": 59,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "133",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_fetch_fifo",
+        "line_number": 59,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "20",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_alu",
+        "line_number": 1402,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "32",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_controller",
+        "line_number": 946,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "72",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_controller",
+        "line_number": 946,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "183",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_fetch_fifo",
+        "line_number": 59,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "98",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_load_store_unit",
+        "line_number": 626,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "179",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_core",
+        "line_number": 1950,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "111",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_decoder",
+        "line_number": 1215,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "149",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_ex_block",
+        "line_number": 83,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "131",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_fetch_fifo",
+        "line_number": 59,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "166",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_fetch_fifo",
+        "line_number": 59,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "52",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_alu",
+        "line_number": 1402,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "88",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_id_stage",
+        "line_number": 1158,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "14",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_wb_stage",
+        "line_number": 141,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "95",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_multdiv_fast",
+        "line_number": 558,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "49",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_multdiv_fast",
+        "line_number": 558,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "123",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_compressed_decoder",
+        "line_number": 50,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "137",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_id_stage",
+        "line_number": 1158,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "83",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_cs_registers",
+        "line_number": 1682,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "181",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_wb_stage",
+        "line_number": 141,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "193",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_fetch_fifo",
+        "line_number": 59,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "164",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_load_store_unit",
+        "line_number": 626,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "187",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_controller",
+        "line_number": 946,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "186",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_alu",
+        "line_number": 1402,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "126",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_decoder",
+        "line_number": 1215,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "169",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_id_stage",
+        "line_number": 1158,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "51",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_alu",
+        "line_number": 1402,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "155",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_multdiv_fast",
+        "line_number": 558,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "39",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_prefetch_buffer",
+        "line_number": 151,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "110",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_load_store_unit",
+        "line_number": 626,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "9",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_fetch_fifo",
+        "line_number": 59,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "66",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_ex_block",
+        "line_number": 83,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "135",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_alu",
+        "line_number": 1402,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "197",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_fetch_fifo",
+        "line_number": 59,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "107",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_fetch_fifo",
+        "line_number": 59,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "33",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_controller",
+        "line_number": 946,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "77",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_alu",
+        "line_number": 1402,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "init",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_alu",
+        "line_number": 1401,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "55",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_wb_stage",
+        "line_number": 193,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "42",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_alu",
+        "line_number": 1402,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "109",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_fetch_fifo",
+        "line_number": 59,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "161",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_cs_registers",
+        "line_number": 1682,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "113",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_cs_registers",
+        "line_number": 1682,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "28",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_alu",
+        "line_number": 1402,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "6",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_alu",
+        "line_number": 1402,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "147",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_id_stage",
+        "line_number": 1158,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "68",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_decoder",
+        "line_number": 1215,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "128",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_decoder",
+        "line_number": 1215,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "176",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_alu",
+        "line_number": 1402,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "184",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_wb_stage",
+        "line_number": 193,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "53",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_multdiv_fast",
+        "line_number": 558,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "115",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_controller",
+        "line_number": 946,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "190",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_alu",
+        "line_number": 1402,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "76",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_wb_stage",
+        "line_number": 141,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "30",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_alu",
+        "line_number": 1402,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "125",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_multdiv_fast",
+        "line_number": 558,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "7",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_ex_block",
+        "line_number": 219,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "87",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_ex_block",
+        "line_number": 197,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "117",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_alu",
+        "line_number": 1402,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "24",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_wb_stage",
+        "line_number": 193,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "73",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_core",
+        "line_number": 1950,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "31",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_multdiv_fast",
+        "line_number": 558,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "89",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_fetch_fifo",
+        "line_number": 59,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "56",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_prefetch_buffer",
+        "line_number": 151,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "13",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_fetch_fifo",
+        "line_number": 59,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "69",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_prefetch_buffer",
+        "line_number": 151,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "188",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_multdiv_fast",
+        "line_number": 558,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "5",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_ex_block",
+        "line_number": 84,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "74",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_id_stage",
+        "line_number": 1158,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "175",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_multdiv_fast",
+        "line_number": 558,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "143",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_id_stage",
+        "line_number": 1158,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "108",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_load_store_unit",
+        "line_number": 626,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "195",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_fetch_fifo",
+        "line_number": 59,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "29",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_decoder",
+        "line_number": 1215,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "151",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_wb_stage",
+        "line_number": 193,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "162",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_prefetch_buffer",
+        "line_number": 151,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "132",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_ex_block",
+        "line_number": 87,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "34",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_if_stage",
+        "line_number": 815,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "81",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_id_stage",
+        "line_number": 1158,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "16",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_alu",
+        "line_number": 1402,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "4",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_decoder",
+        "line_number": 1215,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "80",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_alu",
+        "line_number": 1402,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "45",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_decoder",
+        "line_number": 1215,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "67",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_load_store_unit",
+        "line_number": 626,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "194",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_decoder",
+        "line_number": 1215,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "3",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_wb_stage",
+        "line_number": 88,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "154",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_prefetch_buffer",
+        "line_number": 151,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "106",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_prefetch_buffer",
+        "line_number": 151,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "82",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_alu",
+        "line_number": 1402,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "2",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_id_stage",
+        "line_number": 1158,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  },
+  {
+    "bug_id": "153",
+    "token_usage": null,
+    "token_price": null,
+    "choices": [
+      {
+        "module_name": "ibex_fetch_fifo",
+        "line_number": 59,
+        "block_id": null,
+        "score": 1.0
+      }
+    ]
+  }
+]
