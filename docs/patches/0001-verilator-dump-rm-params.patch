@@ -1,0 +1,32 @@
+From bc51860c4712536cdd5b4fd7f1b3215932ac4934 Mon Sep 17 00:00:00 2001
+From: XXXXX <zizhen_liu@nudt.edu.cn>
+Date: Tue, 13 May 2025 22:27:03 +0800
+Subject: [PATCH] verilator: dump rm params
+
+---
+ src/Verilator.cpp | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/src/Verilator.cpp b/src/Verilator.cpp
+index 8905aacb9..3a60a0c5e 100644
+--- a/src/Verilator.cpp
++++ b/src/Verilator.cpp
+@@ -177,11 +177,15 @@ static void process() {
+ 
+         // Remove parameters by cloning modules to de-parameterized versions
+         //   This requires some width calculations and constant propagation
++        v3Global.rootp()->dumpTreeJsonFile("bfe_rm_params.tree.json");
++
+         V3Param::param(v3Global.rootp());
+         V3LinkDot::linkDotParamed(v3Global.rootp());  // Cleanup as made new modules
+         V3LinkLValue::linkLValue(v3Global.rootp());  // Resolve new VarRefs
+         V3Error::abortIfErrors();
+ 
++        v3Global.rootp()->dumpTreeJsonFile("rm_params.tree.json");
++
+         // Remove any modules that were parameterized and are no longer referenced.
+         V3Dead::deadifyModules(v3Global.rootp());
+ 
+-- 
+2.34.1
+
