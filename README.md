@@ -106,7 +106,7 @@ We provide scripts to plot Figure 4, 5 and 7 in our experiment section from the 
 - Figure 4:
 
 ```shell
-#After running BluesFL, a file `blocks.json` will be generated atthe  root.
+# After running BluesFL, a file `blocks.json` will be generated.
 python scripts/plot_blocks.py 
 ```
 
