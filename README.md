@@ -1,5 +1,7 @@
 # 🎷 Debug Like a Human: Scaling LLM-based Fault Localization to Processor Design via Block-Level Instruction-Oriented Slicing
 
+[![arXiv](https://img.shields.io/badge/arXiv-2605.17290-b31b1b.svg)](https://arxiv.org/abs/2605.17290)
+
 > [!NOTE]
 > We recently refactored BluesFL into **[sv-analyzer](https://github.com/pointerliu/sv-analyzer)** — a cleaner codebase with the core Blues slicing engine, plus TUI, CLI, MCP server, and VS Code extension support for IDE/agent integration. Note that `sv-analyzer` is still in active development and may not yet be stable.
 
