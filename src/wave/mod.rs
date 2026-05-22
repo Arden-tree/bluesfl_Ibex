@@ -9,6 +9,72 @@ use wellen::{self, simple::read, Hierarchy, SignalRef, SignalValue, TimeTableIdx
 
 pub struct WaveInspector {
     waveform: Waveform,
+    /// Maps sv-parser scope paths to FST scope paths.
+    /// Key: reversed FST scope path (e.g., "alu.exu.backend.nutcore...")
+    /// Value: FST scope path as Vec<String>
+    scope_index: Vec<(Vec<String>, Vec<String>)>,
+}
+
+/// Builds a mapping from sv-parser scope paths to FST scope paths.
+/// Collects all FST scopes indexed by their reversed component sequence,
+/// enabling longest-suffix matching against sv-parser scope paths.
+fn build_scope_index(hierarchy: &Hierarchy) -> Vec<(Vec<String>, Vec<String>)> {
+    let mut index = Vec::new();
+    for scope_ref in hierarchy.scopes() {
+        collect_scopes_recursive(hierarchy, scope_ref, &mut vec![], &mut index);
+    }
+    index
+}
+
+fn collect_scopes_recursive(
+    hierarchy: &Hierarchy,
+    scope_ref: wellen::ScopeRef,
+    path: &mut Vec<String>,
+    index: &mut Vec<(Vec<String>, Vec<String>)>,
+) {
+    let scope = &hierarchy[scope_ref];
+    let name = scope.name(hierarchy).to_string();
+    path.push(name);
+
+    // Store (reversed_path, forward_path)
+    let reversed: Vec<String> = path.iter().rev().cloned().collect();
+    let forward: Vec<String> = path.clone();
+    index.push((reversed, forward));
+
+    for sub_ref in scope.scopes(hierarchy) {
+        collect_scopes_recursive(hierarchy, sub_ref, path, index);
+    }
+    path.pop();
+}
+
+/// Given an sv-parser scope (as Vec<&str>), find the matching FST scope path
+/// by longest-suffix matching against the scope index.
+fn map_scope(
+    sv_scope: &[&str],
+    scope_index: &[(Vec<String>, Vec<String>)],
+) -> Option<Vec<String>> {
+    let sv_rev: Vec<&str> = sv_scope.iter().rev().cloned().collect();
+
+    // Find the FST scope whose reversed path has the longest common prefix with sv_rev
+    let mut best_match: Option<(usize, &Vec<String>)> = None;
+
+    for (fst_rev, fst_fwd) in scope_index {
+        // Count how many components match from the end
+        let common_len = sv_rev
+            .iter()
+            .zip(fst_rev.iter())
+            .take_while(|(a, b)| a == b)
+            .count();
+
+        if common_len > 0 {
+            match best_match {
+                Some((best_len, _)) if common_len <= best_len => {}
+                _ => best_match = Some((common_len, fst_fwd)),
+            }
+        }
+    }
+
+    best_match.map(|(_, fwd)| fwd.clone())
 }
 
 /// Represents a signal value that may be in raw form or translated through an enum mapping
@@ -72,52 +138,76 @@ impl<'a> Display for SignalValueInterpretation<'a> {
 impl WaveInspector {
     pub fn new<T: AsRef<Path>>(path: T) -> Result<Self, WellenError> {
         let waveform = read(path)?;
-        Ok(Self { waveform })
+        let hierarchy = waveform.hierarchy();
+        let scope_index = build_scope_index(hierarchy);
+        Ok(Self { waveform, scope_index })
     }
 
     fn get_signal_item<S: AsRef<str>, T: AsRef<str>>(
         hierarchy: &Hierarchy,
         scope: &[S],
         var: T,
+        scope_index: &[(Vec<String>, Vec<String>)],
         time: usize,
     ) -> Option<Vec<(usize, String, SignalRef, Option<HashMap<String, String>>)>> {
-        let plain_var_info = hierarchy
-            .lookup_var(
-                &scope.into_iter().map(|s| s.as_ref()).collect::<Vec<_>>(),
-                &var.as_ref(),
-            )
-            .map(|var_id| {
-                let var_ref = &hierarchy[var_id];
-                let signal_ref = var_ref.signal_ref();
-                let enum_mapping = var_ref.enum_type(hierarchy).map(|(_, enum_pairs)| {
-                    enum_pairs
-                        .iter()
-                        .map(|(x, y)| (x.to_string(), y.to_string()))
-                        .collect::<HashMap<_, _>>()
-                });
-                vec![(time, var.as_ref().to_string(), signal_ref, enum_mapping)]
-            });
+        let var_str = var.as_ref();
+        let scope_vec: Vec<&str> = scope.iter().map(|s| s.as_ref()).collect();
 
-        let var_info = if plain_var_info.is_none() {
-            // var may be an array, so try to lookup in scope
-            let mut array_scope = scope.iter().map(AsRef::as_ref).collect::<Vec<_>>();
-            array_scope.push(var.as_ref());
-            hierarchy.lookup_scope(&array_scope).map(|scope_ref| {
-                hierarchy[scope_ref]
+        // 1. Try exact scope path
+        if let Some(var_id) = hierarchy.lookup_var(&scope_vec, &var_str) {
+            return Some(Self::make_var_info(hierarchy, var_id, time, var_str));
+        }
+
+        // 2. Map scope via suffix matching against FST hierarchy
+        if let Some(mapped_scope) = map_scope(&scope_vec, scope_index) {
+            if let Some(var_id) = hierarchy.lookup_var(&mapped_scope, &var_str.to_string()) {
+                return Some(Self::make_var_info(hierarchy, var_id, time, var_str));
+            }
+        }
+
+        // 3. Try array scope (exact + mapped)
+        let mut candidates: Vec<Vec<String>> = vec![scope_vec.iter().map(|s| s.to_string()).collect()];
+        if let Some(mapped) = map_scope(&scope_vec, scope_index) {
+            candidates.push(mapped);
+        }
+        for scope_path in candidates {
+            let mut array_scope: Vec<String> = scope_path.clone();
+            array_scope.push(var_str.to_string());
+            if let Some(scope_ref) = hierarchy.lookup_scope(&array_scope) {
+                let vars: Vec<_> = hierarchy[scope_ref]
                     .vars(hierarchy)
                     .map(|var_id| {
                         let array_index_name = hierarchy[var_id].name(hierarchy);
                         let var_ref = &hierarchy[var_id];
                         let signal_ref = var_ref.signal_ref();
-                        let var_name = var.as_ref().to_string() + array_index_name;
+                        let var_name = var_str.to_string() + array_index_name;
                         (time, var_name, signal_ref, None)
                     })
-                    .collect::<Vec<_>>()
-            })
-        } else {
-            plain_var_info
-        };
-        var_info
+                    .collect();
+                if !vars.is_empty() {
+                    return Some(vars);
+                }
+            }
+        }
+
+        None
+    }
+
+    fn make_var_info(
+        hierarchy: &Hierarchy,
+        var_id: wellen::VarRef,
+        time: usize,
+        var_str: &str,
+    ) -> Vec<(usize, String, SignalRef, Option<HashMap<String, String>>)> {
+        let var_ref = &hierarchy[var_id];
+        let signal_ref = var_ref.signal_ref();
+        let enum_mapping = var_ref.enum_type(hierarchy).map(|(_, enum_pairs)| {
+            enum_pairs
+                .iter()
+                .map(|(x, y)| (x.to_string(), y.to_string()))
+                .collect::<HashMap<_, _>>()
+        });
+        vec![(time, var_str.to_string(), signal_ref, enum_mapping)]
     }
 
     fn get_signal_value(
@@ -155,8 +245,7 @@ impl WaveInspector {
         let var_data: Vec<_> = vars
             .iter()
             .filter_map(|var| {
-                let var_info = Self::get_signal_item(hierarchy, scope, var, time);
-                var_info
+                Self::get_signal_item(hierarchy, scope, var, &self.scope_index, time)
             })
             .flatten()
             .collect();
@@ -191,7 +280,7 @@ impl WaveInspector {
         let var_data: Vec<_> = vars
             .iter()
             .filter_map(|(var, time)| {
-                let var_info = Self::get_signal_item(hierarchy, scope, var, *time);
+                let var_info = Self::get_signal_item(hierarchy, scope, var, &self.scope_index, *time);
                 // var_info may cannot be fetched, so return `None` directly
                 var_info
             })
