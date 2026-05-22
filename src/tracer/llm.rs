@@ -323,7 +323,8 @@ where
                 .map(|(_, b)| b.clone())
                 .collect();
             tokio::spawn(async move {
-                let response = bc_checker
+                warn!("LLM vote task {} starting for sig={}", i, sig_name);
+                let result = bc_checker
                     .determine(
                         &block,
                         &port_nodes,
@@ -335,11 +336,8 @@ where
                         &historical_suspicious_blocks,
                     )
                     .await;
-                info!(
-                    "block_checker for local_sig={} at module={}, i={} response={:?}",
-                    sig_name, module_name, i, response
-                );
-                if let Err(err) = tx_clone.send(response).await {
+                warn!("LLM vote task {} got response: {:?}", i, result);
+                if let Err(err) = tx_clone.send(result).await {
                     error!("block_checker response error: {:?}", err);
                 }
             });
@@ -349,6 +347,7 @@ where
 
         while let Some(response) = rx.recv().await {
             if let Ok((vars, suspicious, terminate)) = response {
+                warn!("LLM vote response: vars={:?}, suspicious={}, terminate={}", vars.as_ref().map(|v| v.len()), suspicious, terminate);
                 if let Some(vars) = vars {
                     not_dive_count += 1.0;
                     // next_time = Some(t);
@@ -360,10 +359,12 @@ where
                 if terminate {
                     terminate_count += 1.0;
                 }
+            } else {
+                warn!("LLM vote response ERROR: {:?}", response);
             };
         }
-        debug!(
-            "not_dive_count is {}, suspicious_count is {}, terminate_count is {}, total is {}",
+        warn!(
+            "LLM voting result: not_dive={}, suspicious={}, terminate={}, total={}",
             not_dive_count, suspicious_count, terminate_count, total_count
         );
 
@@ -698,10 +699,10 @@ where
             // if {
             //     self.block_checker_enable
             //         .contains(&(block.get_bid(), time.unwrap()))
-            // } 
+            // }
             =>
                 {
-                    trace!("block_checker start for block: {}, sig={} module={}, time={:?}", block.get_bid(), sig.get_text(), block.get_module_name(), time);
+                    warn!("LLM get_driven_signals_fixpoint: block {} sig={} module={}", block.get_bid(), sig.get_text(), block.get_module_name());
                     // if | case
                     // [input]
                     // 1. sig -> local_sig -> dataflow[predicates, right values]
@@ -727,12 +728,15 @@ where
                         self.dynamic_tracer.pos_visited = old;
                         ret
                     }?;
+                    warn!("LLM: fixpoint returned scope={}, vars={:?}", next_scope, next_vars.as_ref().map(|v| v.len()));
                     let sig_dataflow_vars = next_vars?
                         // FIXME: temp remove constants
                         .into_iter().filter(|(var, _)| !var.get_text().chars().filter(|c| c.is_alphabetic()).all(|c| c.is_uppercase()))
                         .collect::<Vec<_>>();
+                    warn!("LLM: sig_dataflow_vars count={}", sig_dataflow_vars.len());
 
                     let local_trace = self.get_local_trace(block, sig, time).await;
+                    warn!("LLM: local_trace len={}", local_trace.len());
                     let port_blocks = self.filter_input_ports_from_trace(cur_scope, &local_trace)
                         .iter()
                         .map(|(b, t)| {
@@ -747,6 +751,8 @@ where
                         cur_scope, block
                     );
                     }
+
+                    warn!("LLM: calling llm_request_for_blocks with port_blocks={}, df_vars={}", port_blocks.len(), sig_dataflow_vars.len());
 
                     let ret = self.llm_request_for_blocks(
                         cur_scope,

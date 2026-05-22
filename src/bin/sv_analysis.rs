@@ -1,6 +1,7 @@
-#![recursion_limit = "256"]
+#![recursion_limit = "1024"]
 use clap::{arg, Parser};
 use log::info;
+use rayon::ThreadPoolBuilder;
 use serde_json::json;
 use std::error::Error;
 use std::fs;
@@ -94,6 +95,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
     } else {
         dotenv::from_filename(args.dot_env.as_ref().unwrap())?;
     }
+
+    // Initialize rayon thread pool with larger stack for deep SV parsing
+    ThreadPoolBuilder::new()
+        .stack_size(64 * 1024 * 1024) // 64MB stack per thread
+        .build_global()
+        .unwrap_or_else(|e| info!("Rayon pool already initialized: {}", e));
 
     if let Ok(flag) = fs::exists(&args.output_path) {
         if !flag {

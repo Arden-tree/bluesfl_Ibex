@@ -170,19 +170,24 @@ pub fn setup_block_mgr<'a, P: AsRef<Path>, CT: CoverageTracker>(
 ) -> BlockManager<'a, DataFlowBlockParser> {
     // FIXME: compose_tracker here looks unnecessary.
     let covered_files = compose_tracker.get_covered_module_files();
-    let mod_path = mod_path
-        .iter()
-        .filter(|p| {
-            let file_name = p
-                .as_ref()
-                .file_name()
-                .unwrap()
-                .to_str()
-                .unwrap()
-                .to_string();
-            covered_files.contains(&file_name)
-        })
-        .collect::<Vec<_>>();
+    let mod_path = if covered_files.is_empty() {
+        // No coverage data available: assume all files are covered
+        mod_path.iter().collect::<Vec<_>>()
+    } else {
+        mod_path
+            .iter()
+            .filter(|p| {
+                let file_name = p
+                    .as_ref()
+                    .file_name()
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
+                    .to_string();
+                covered_files.contains(&file_name)
+            })
+            .collect::<Vec<_>>()
+    };
     let includes = includes.iter().map(|p| p).collect::<Vec<_>>();
     let block_manager = parse_module(&mod_path, &includes, top_module, top_scope, param_tracker);
     block_manager
