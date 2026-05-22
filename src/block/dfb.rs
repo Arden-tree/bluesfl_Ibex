@@ -313,7 +313,7 @@ impl BlockParser for DataFlowBlockParser {
                             };
                         let next_tree = module_tree_mapping.get(&module_name);
                         if let None = next_tree {
-                            warn!("We met an Unknown submodule {}", module_name);
+                            warn!("We met an Unknown submodule {} (dut_name={})", module_name, dut_name);
                             continue;
                         }
                         let next_tree = next_tree.unwrap();
@@ -422,6 +422,15 @@ impl DataFlowBlockParser {
                 CoverState::Covered
             }
             BlockType::Assign => {
+                // If no coverage tracker is available, treat as covered
+                let tracker = match self.param_coverage_tracker.as_ref() {
+                    Some(t) => t,
+                    None => return CoverState::Covered,
+                };
+                // If tracker has no data for this module, treat as covered
+                if !tracker.has_module_data(module_name) {
+                    return CoverState::Covered;
+                }
                 let covered_lines = block
                     .get_covered_line_locates()
                     .into_iter()

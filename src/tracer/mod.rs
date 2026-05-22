@@ -319,7 +319,7 @@ where
         let mut sig_nodes = self.get_node_id_from_output_port(scope_name, sig).unwrap();
         if sig_nodes.is_empty() {
             warn!(
-                "No signal `{}` in output ports of scope {}. Trying internal vars...",
+                "No signal `{}` found in output ports of scope {}. Trying internal vars now.",
                 sig, scope_name
             );
             sig_nodes.extend(self.get_node_id_from_internal(scope_name, sig).unwrap());

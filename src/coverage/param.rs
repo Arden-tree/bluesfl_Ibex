@@ -143,6 +143,10 @@ impl ParameterCoverageReport {
         }
     }
 
+    pub fn has_module_data(&self, module_name: &str) -> bool {
+        self.lines_coverage.contains_key(module_name)
+    }
+
     pub fn check_covered(&self, module_name: Option<&str>, lineno: u32) -> Option<usize> {
         let ret = module_name.and_then(|module_name| {
             self.lines_coverage

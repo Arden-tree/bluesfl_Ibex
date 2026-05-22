@@ -111,46 +111,55 @@ where
     ) -> (Option<TimeAnnotation>, Option<Vec<NodeID>>) {
         // For AssignBlock, they are all covered. So we can directly reach fix point.
         // For AlwaysBlock, not all lines are covered, So we need add covered line to the fix point iteration.
-        
+
         // FIXME: only when a sig exist, we maintain it and repeat use sig@t-1. If this circuit not exist, we should ignore it.
-        let covered_lines = block
-            .get_covered_line_locates()
-            .into_par_iter()
-            .map(|locate| {
-                // TODO: convert lineno in AST to original lineno
-                let ast_locate = Locate {
-                    offset: locate.offset,
-                    len: locate.len,
-                    line: locate.line,
-                };
-                let lineno = self
-                    .block_manager
-                    .get_original_lineno_from_ast_locate(
-                        block.get_scope(),
-                        block.get_module_name(),
-                        ast_locate,
+        let covered_lines = if matches!(btype, BlockType::Assign) {
+            // For Assign blocks, all lines are considered covered (no coverage data needed)
+            block
+                .get_covered_line_locates()
+                .into_par_iter()
+                .map(|locate| (locate.line, 1usize))
+                .collect::<Vec<_>>()
+        } else {
+            block
+                .get_covered_line_locates()
+                .into_par_iter()
+                .map(|locate| {
+                    // TODO: convert lineno in AST to original lineno
+                    let ast_locate = Locate {
+                        offset: locate.offset,
+                        len: locate.len,
+                        line: locate.line,
+                    };
+                    let lineno = self
+                        .block_manager
+                        .get_original_lineno_from_ast_locate(
+                            block.get_scope(),
+                            block.get_module_name(),
+                            ast_locate,
+                        )
+                        .unwrap();
+                    (
+                        // (ast line will be used in following node location,
+                        locate.line,
+                        // original lineno will be used to check line coverage)
+                        lineno as u32,
                     )
-                    .unwrap();
-                (
-                    // (ast line will be used in following node location,
-                    locate.line,
-                    // original lineno will be used to check line coverage)
-                    lineno as u32,
-                )
-            })
-            .filter_map(|(lineno, original_lineno)| {
-                // get covered lineno in block's scope at time T.
-                self.coverage_tracker
-                    .check_line_covered(
-                        Some(btype.clone()),
-                        Some(block.get_scope()),
-                        Some(block.get_module_name()),
-                        Some(time.unwrap()),
-                        original_lineno,
-                    )
-                    .map(|count| (lineno, count))
-            })
-            .collect::<Vec<_>>();
+                })
+                .filter_map(|(lineno, original_lineno)| {
+                    // get covered lineno in block's scope at time T.
+                    self.coverage_tracker
+                        .check_line_covered(
+                            Some(btype.clone()),
+                            Some(block.get_scope()),
+                            Some(block.get_module_name()),
+                            Some(time.unwrap()),
+                            original_lineno,
+                        )
+                        .map(|count| (lineno, count))
+                })
+                .collect::<Vec<_>>()
+        };
 
         // sig locate may not in this block
 

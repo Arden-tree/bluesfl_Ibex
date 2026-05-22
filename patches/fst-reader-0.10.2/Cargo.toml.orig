@@ -1,0 +1,26 @@
+[package]
+name = "fst-reader"
+version = "0.10.2"
+edition = "2021"
+authors = ["Kevin Laeufer <laeufer@cornell.edu>"]
+description = "FST wavedump format reader implemented in safe Rust. Formerly known as fst-native."
+homepage = "https://github.com/ekiwi/fst-reader"
+repository = "https://github.com/ekiwi/fst-reader"
+license = "BSD-3-Clause"
+include = ["Cargo.toml", "LICENSE", "src/", "tests/", "examples/"]
+keywords = ["fst", "waveform", "wavedump"]
+
+[dependencies]
+lz4_flex = "0.11"
+num_enum = "0.7"
+thiserror = "2.0"
+miniz_oxide = { version = "0.8.2", features = ["std"] }
+
+[dev-dependencies]
+fst-sys = "0.2.0"
+leb128 = "0.2.5"
+proptest = "1.x"
+proptest-derive = "0.5"
+
+[profile.release]
+debug = true
