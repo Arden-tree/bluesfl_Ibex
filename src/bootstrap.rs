@@ -9,8 +9,7 @@ use crate::{
 use clap::ValueEnum;
 use regex::Regex;
 use rig::agent::AgentBuilder;
-use rig::client::builder::{ClientFactory, DefaultProviders, DynClientBuilder};
-use rig::client::completion::CompletionModelHandle;
+use rig::client::completion::{CompletionClient, CompletionModelHandle};
 use rig::completion::Usage;
 use rig::prelude::ProviderClient;
 use rig::providers::{anthropic, ollama, openai};
@@ -33,60 +32,55 @@ pub fn get_agent_builder<'a>(
     agent_type: AgentType,
     model_name: &str,
 ) -> AgentBuilder<CompletionModelHandle<'a>> {
-    let multi_client = DynClientBuilder::default().register_all(vec![
-        ClientFactory::new(
-            DefaultProviders::OLLAMA,
-            || {
-                let ollama_host = env::var("OLLAMA_HOST").unwrap_or("http://localhost".to_string());
-                let ollama_port = env::var("OLLAMA_PORT").unwrap_or("11434".to_string());
-                let base_url = format!("{}:{}", ollama_host, ollama_port);
-                Box::new(
-                    ollama::Client::builder()
-                        .base_url(&base_url)
-                        .build()
-                        .unwrap(),
-                )
-            },
-            ollama::Client::from_val_boxed,
-        ),
-        ClientFactory::new(
-            DefaultProviders::ANTHROPIC,
-            || {
-                let anthropic_base = env::var("ANTHROPIC_BASE_URL")
-                    .unwrap_or("https://api.anthropic.com".to_string());
-                let anthropic_key =
-                    env::var("ANTHROPIC_API_KEY").expect("Please set ANTHROPIC_API_KEY");
-                Box::new(
-                    anthropic::Client::builder(&anthropic_key)
-                        .base_url(&anthropic_base)
-                        .build()
-                        .unwrap(),
-                )
-            },
-            anthropic::Client::from_val_boxed,
-        ),
-        ClientFactory::new(
-            DefaultProviders::OPENAI,
-            || {
-                let openai_base =
-                    env::var("API_BASE").unwrap_or("https://api.openai.com".to_string());
-                let openai_key = env::var("API_KEY").expect("Please set OPENAI_API_KEY");
-                Box::new(
-                    openai::Client::builder(&openai_key)
-                        .base_url(&openai_base)
-                        .build()
-                        .unwrap(),
-                )
-            },
-            openai::Client::from_val_boxed,
-        ),
-    ]);
-    let builder = match agent_type {
-        AgentType::OpenAI => multi_client.agent("openai", model_name).unwrap(),
-        AgentType::Claude => multi_client.agent("anthropic", model_name).unwrap(),
-        AgentType::Ollama => multi_client.agent("ollama", model_name).unwrap(),
-    };
-    builder
+    match agent_type {
+        AgentType::OpenAI => {
+            // Use chat completions API (/chat/completions) instead of responses API (/responses).
+            // rig 0.19.0 defaults to ResponsesCompletionModel which is OpenAI-only.
+            let openai_base =
+                env::var("API_BASE").unwrap_or("https://api.openai.com/v1".to_string());
+            let openai_key = env::var("API_KEY").expect("Please set API_KEY");
+            let client = openai::Client::builder(&openai_key)
+                .base_url(&openai_base)
+                .build()
+                .unwrap();
+            // Directly construct the chat-completions model (not the responses API model)
+            let model = openai::completion::CompletionModel::new(client, model_name);
+            let handle = CompletionModelHandle {
+                inner: std::sync::Arc::new(model),
+            };
+            AgentBuilder::new(handle)
+        }
+        AgentType::Claude => {
+            let anthropic_base = env::var("ANTHROPIC_BASE_URL")
+                .unwrap_or("https://api.anthropic.com".to_string());
+            let anthropic_key =
+                env::var("ANTHROPIC_API_KEY").expect("Please set ANTHROPIC_API_KEY");
+            let client = anthropic::Client::builder(&anthropic_key)
+                .base_url(&anthropic_base)
+                .build()
+                .unwrap();
+            let model = client.completion_model(model_name);
+            let handle = CompletionModelHandle {
+                inner: std::sync::Arc::new(model),
+            };
+            AgentBuilder::new(handle)
+        }
+        AgentType::Ollama => {
+            let ollama_host =
+                env::var("OLLAMA_HOST").unwrap_or("http://localhost".to_string());
+            let ollama_port = env::var("OLLAMA_PORT").unwrap_or("11434".to_string());
+            let base_url = format!("{}:{}", ollama_host, ollama_port);
+            let client = ollama::Client::builder()
+                .base_url(&base_url)
+                .build()
+                .unwrap();
+            let model = client.completion_model(model_name);
+            let handle = CompletionModelHandle {
+                inner: std::sync::Arc::new(model),
+            };
+            AgentBuilder::new(handle)
+        }
+    }
 }
 
 fn parse_module<'a, P: AsRef<Path>>(
