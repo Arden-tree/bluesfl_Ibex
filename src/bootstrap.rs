@@ -39,8 +39,13 @@ pub fn get_agent_builder<'a>(
             let openai_base =
                 env::var("API_BASE").unwrap_or("https://api.openai.com/v1".to_string());
             let openai_key = env::var("API_KEY").expect("Please set API_KEY");
+            let http_client = reqwest::Client::builder()
+                .timeout(std::time::Duration::from_secs(120))
+                .build()
+                .unwrap();
             let client = openai::Client::builder(&openai_key)
                 .base_url(&openai_base)
+                .custom_client(http_client)
                 .build()
                 .unwrap();
             // Directly construct the chat-completions model (not the responses API model)
