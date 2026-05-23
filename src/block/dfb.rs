@@ -17,8 +17,8 @@ use std::cell::Cell;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
 use sv_parser::{
-    unwrap_node, AlwaysConstruct, AnsiPortDeclarationNet, Locate, NetAssignment, NodeEvent,
-    PortDirection, RefNode, SyntaxTree,
+    unwrap_node, AlwaysConstruct, AnsiPortDeclarationNet, Locate, NetAssignment, NetDeclaration,
+    NodeEvent, PortDirection, RefNode, SyntaxTree,
 };
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
@@ -355,6 +355,13 @@ impl BlockParser for DataFlowBlockParser {
             RefNode::NetAssignment(assign) => {
                 return Some(self.new_assign_block(tree, module_name, scope, assign))
             }
+            RefNode::NetDeclaration(net_decl) => {
+                // Handle `wire x = expr;` inline initializers as AssignBlocks.
+                // Chisel-generated Verilog uses these heavily instead of separate `assign`.
+                if let Some(block) = self.new_wire_assign_block(tree, module_name, scope, net_decl) {
+                    return Some(block);
+                }
+            }
             _ => {}
         }
         None
@@ -610,5 +617,63 @@ impl DataFlowBlockParser {
             blk.ast_ranges.push(ast_range);
         });
         blk
+    }
+
+    /// Handle `wire [N:0] x = expr;` inline initializer as an AssignBlock.
+    /// Chisel-generated Verilog uses this pattern instead of separate `assign x = expr;`.
+    fn new_wire_assign_block<'a>(
+        &self,
+        tree: &SyntaxTree,
+        module_name: &str,
+        scope: &str,
+        net_decl: &'a NetDeclaration,
+    ) -> Option<DataFlowBlock> {
+        // Walk into the NetDeclaration to find NetDeclAssignment nodes with initializers
+        let ref_node = RefNode::NetDeclaration(net_decl);
+        for child in ref_node.into_iter() {
+            if let RefNode::NetDeclAssignment(decl_assign) = child {
+                // nodes: (NetIdentifier, Vec<UnpackedDimension>, Option<(Symbol, Expression)>)
+                let has_init = decl_assign.nodes.2.is_some();
+                if !has_init {
+                    continue;
+                }
+                let mut blk = DataFlowBlock::new(
+                    self.get_next_bid(),
+                    module_name,
+                    scope,
+                    BlockType::Assign,
+                );
+
+                // Output: the wire name
+                let net_id = &decl_assign.nodes.0;
+                let output_node = NodeID::new_identifier(tree, RefNode::NetIdentifier(net_id)).unwrap();
+                blk.add_output_node(output_node.clone());
+
+                // Input: identifiers from the initializer expression
+                if let Some((_, expr)) = &decl_assign.nodes.2 {
+                    for n in expr.into_iter() {
+                        if let RefNode::Identifier(identifier) = n {
+                            let node = NodeID::new_identifier(tree, RefNode::Identifier(identifier)).unwrap();
+                            blk.add_input_node(node);
+                        }
+                    }
+                }
+
+                // Dataflow: output -> inputs
+                let right = blk.inputs.iter().cloned().collect::<Vec<_>>();
+                blk.nodes_dataflow.insert(output_node, right);
+
+                let code = format!(
+                    "wire {};",
+                    get_ref_node_code_str(tree, RefNode::NetDeclAssignment(decl_assign)).unwrap()
+                );
+                blk.add_ctx(&code);
+                get_node_ast_range(decl_assign).map(|ast_range: AstRange| {
+                    blk.ast_ranges.push(ast_range);
+                });
+                return Some(blk);
+            }
+        }
+        None
     }
 }

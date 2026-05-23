@@ -40,7 +40,9 @@ pub fn get_agent_builder<'a>(
                 env::var("API_BASE").unwrap_or("https://api.openai.com/v1".to_string());
             let openai_key = env::var("API_KEY").expect("Please set API_KEY");
             let http_client = reqwest::Client::builder()
-                .timeout(std::time::Duration::from_secs(120))
+                .connect_timeout(std::time::Duration::from_secs(30))
+                .timeout(std::time::Duration::from_secs(300))
+                .tcp_keepalive(std::time::Duration::from_secs(30))
                 .build()
                 .unwrap();
             let client = openai::Client::builder(&openai_key)
