@@ -1,4 +1,5 @@
 use crate::block::Block;
+use crate::utils::extract_signal_suffix;
 use crate::{get_last_scope, BlockType};
 use async_trait::async_trait;
 use log::{debug, info, warn};
@@ -160,7 +161,8 @@ where
     }
 
     fn get_block_result(&self, scope_name: &str, sig: &NodeID) -> Vec<(String, Vec<T>)> {
-        let mut scope_name = scope_name.to_string();
+        let original_scope = scope_name.to_string();
+        let mut scope_name = original_scope.clone();
         let result = loop {
             if let Ok(blocks) = self.get_block(&scope_name, sig) {
                 break blocks;
@@ -176,7 +178,64 @@ where
                 }
             }
         };
+
+        // Fallback: if normal scope-based search failed, try suffix-based cross-scope matching.
+        // This handles Chisel-generated Verilog where signal names change at module boundaries
+        // (e.g., io_in_bits_decode_cf_redirect_target in WBU vs io_redirect_target in ALU).
+        if result.is_empty() {
+            return self.find_block_by_signal_suffix(&original_scope, sig);
+        }
         result
+    }
+
+    /// Fallback search: when normal scope-based block lookup fails due to signal renaming
+    /// at module boundaries (common in Chisel-generated Verilog), extract the meaningful
+    /// suffix of the signal name and search all scopes for blocks with matching outputs.
+    fn find_block_by_signal_suffix(&self, original_scope: &str, sig: &NodeID) -> Vec<(String, Vec<T>)> {
+        let sig_text = sig.get_text();
+        let suffix = extract_signal_suffix(sig_text);
+
+        if suffix.is_empty() || suffix.len() < 4 {
+            // Suffix too short to be meaningful, skip
+            return vec![];
+        }
+
+        info!(
+            "Fallback suffix search: signal='{}', suffix='{}', original_scope='{}'",
+            sig_text, suffix, original_scope
+        );
+
+        let mut results = Vec::new();
+        for scope in self.get_scopes() {
+            // Skip the scope we already searched
+            if scope == original_scope {
+                continue;
+            }
+            if let Ok(blocks) = self.get_scope_blocks(scope) {
+                let matching: Vec<T> = blocks
+                    .iter()
+                    .filter(|block| {
+                        // Only match against non-ModuleOutput blocks (actual logic blocks)
+                        // or ModuleOutput blocks in sub-scopes
+                        block
+                            .get_output_nodes()
+                            .iter()
+                            .any(|node| node.get_text().ends_with(suffix))
+                    })
+                    .cloned()
+                    .collect();
+                if !matching.is_empty() {
+                    info!(
+                        "Suffix match found: scope='{}', suffix='{}', blocks={}",
+                        scope, suffix, matching.len()
+                    );
+                    results.push((scope.to_string(), matching));
+                    // Return the first match to avoid explosion
+                    break;
+                }
+            }
+        }
+        results
     }
 
     /// `get_block` to process scope from upper to lower: top -> sub_module by OutputModule Block

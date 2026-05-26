@@ -17,8 +17,8 @@ use std::cell::Cell;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
 use sv_parser::{
-    unwrap_node, AlwaysConstruct, AnsiPortDeclarationNet, Locate, NetAssignment, NetDeclaration,
-    NodeEvent, PortDirection, RefNode, SyntaxTree,
+    unwrap_node, AlwaysConstruct, AnsiPortDeclarationNet, AnsiPortDeclarationVariable, Locate,
+    NetAssignment, NetDeclaration, NodeEvent, PortDirection, RefNode, SyntaxTree,
 };
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
@@ -185,8 +185,54 @@ impl BlockParser for DataFlowBlockParser {
         let module_name = get_module_name(tree).unwrap();
         let code_content = module_code_mapping.get(&module_name).unwrap().as_str();
 
+        let mut last_port_direction: Option<PortDirection> = None;
         for node in tree {
-            if let Some(mut block) = self.new_block(tree, &module_name, scope, node) {
+            // Track port direction for CIRCT-style multi-port declarations.
+            // CIRCT generates: `input [38:0] port_a, port_b,` where port_b is
+            // parsed by sv-parser as AnsiPortDeclarationVariable (without direction).
+            let block_opt: Option<DataFlowBlock> = match &node {
+                // Standard port declarations with explicit input/output keyword
+                RefNode::AnsiPortDeclarationNet(decl) => {
+                    let dir = get_port_direction(decl);
+                    if dir.is_some() {
+                        last_port_direction = dir.clone();
+                    }
+                    let effective_dir = dir.or_else(|| last_port_direction.clone());
+                    match effective_dir {
+                        Some(PortDirection::Input(_)) => {
+                            Some(self.new_module_input_block(tree, &module_name, scope, decl))
+                        }
+                        Some(PortDirection::Output(_)) => {
+                            Some(self.new_module_output_block(tree, &module_name, scope, decl))
+                        }
+                        _ => None,
+                    }
+                }
+                // CIRCT continuation ports (no explicit input/output keyword)
+                // sv-parser parses these as AnsiPortDeclarationVariable
+                RefNode::AnsiPortDeclarationVariable(decl) => {
+                    // Try to get direction from the variable port header
+                    let dir = unwrap_node!(decl.clone(), PortDirection).and_then(|n| match n {
+                        RefNode::PortDirection(d) => Some(d),
+                        _ => None,
+                    });
+                    if dir.is_some() {
+                        last_port_direction = dir.cloned();
+                    }
+                    let effective_dir = dir.cloned().or_else(|| last_port_direction.clone());
+                    match effective_dir {
+                        Some(PortDirection::Input(_)) => {
+                            Some(self.new_module_input_block_from_var(tree, &module_name, scope, decl))
+                        }
+                        Some(PortDirection::Output(_)) => {
+                            Some(self.new_module_output_block_from_var(tree, &module_name, scope, decl))
+                        }
+                        _ => None,
+                    }
+                }
+                _ => self.new_block(tree, &module_name, scope, node.clone()),
+            };
+            if let Some(mut block) = block_opt {
                 // check block covered?
 
                 if self.param_coverage_tracker.is_some() {
@@ -381,6 +427,7 @@ impl DataFlowBlockParser {
         for node in tree {
             match node {
                 RefNode::AnsiPortDeclarationNet(_)
+                | RefNode::AnsiPortDeclarationVariable(_)
                 | RefNode::NetDeclaration(_)
                 | RefNode::DataDeclaration(_) => {
                     let decl_code = get_ref_node_code_str(tree, node.clone());
@@ -534,6 +581,69 @@ impl DataFlowBlockParser {
 
             let code =
                 get_ref_node_code_str(tree, RefNode::AnsiPortDeclarationNet(ref_node)).unwrap();
+            blk.add_ctx(code);
+        }
+        get_node_ast_range(ref_node).map(|ast_range: AstRange| {
+            blk.ast_ranges.push(ast_range);
+        });
+        blk
+    }
+    /// Create a ModuleInput block from an AnsiPortDeclarationVariable (CIRCT continuation port)
+    fn new_module_input_block_from_var<'a>(
+        &self,
+        tree: &SyntaxTree,
+        module_name: &str,
+        scope: &str,
+        ref_node: &'a AnsiPortDeclarationVariable,
+    ) -> <DataFlowBlockParser as BlockParser>::Block<'a> {
+        let mut blk = DataFlowBlock::new(
+            self.get_next_bid(),
+            module_name,
+            scope,
+            BlockType::ModuleInput,
+        );
+        if let Some(RefNode::PortIdentifier(port_identifier)) =
+            unwrap_node!(ref_node, PortIdentifier)
+        {
+            if let Some(RefNode::Identifier(identifier)) = unwrap_node!(port_identifier, Identifier)
+            {
+                let node = NodeID::new_identifier(tree, RefNode::Identifier(identifier)).unwrap();
+                blk.add_output_node(node);
+                let code = get_ref_node_code_str(
+                    tree,
+                    RefNode::AnsiPortDeclarationVariable(ref_node),
+                )
+                .unwrap();
+                blk.add_ctx(code);
+            }
+        }
+        get_node_ast_range(ref_node).map(|ast_range: AstRange| {
+            blk.ast_ranges.push(ast_range);
+        });
+        blk
+    }
+    /// Create a ModuleOutput block from an AnsiPortDeclarationVariable (CIRCT continuation port)
+    fn new_module_output_block_from_var<'a>(
+        &self,
+        tree: &SyntaxTree,
+        module_name: &str,
+        scope: &str,
+        ref_node: &'a AnsiPortDeclarationVariable,
+    ) -> <DataFlowBlockParser as BlockParser>::Block<'a> {
+        let mut blk = DataFlowBlock::new(
+            self.get_next_bid(),
+            module_name,
+            scope,
+            BlockType::ModuleOutput,
+        );
+        if let Some(RefNode::Identifier(identifier)) = unwrap_node!(ref_node, Identifier) {
+            let node = NodeID::new_identifier(tree, RefNode::Identifier(identifier)).unwrap();
+            blk.add_input_node(node);
+            let code = get_ref_node_code_str(
+                tree,
+                RefNode::AnsiPortDeclarationVariable(ref_node),
+            )
+            .unwrap();
             blk.add_ctx(code);
         }
         get_node_ast_range(ref_node).map(|ast_range: AstRange| {

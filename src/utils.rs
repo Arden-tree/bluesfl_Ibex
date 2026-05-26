@@ -57,6 +57,52 @@ pub fn get_next_scope(scope_name: &str, dut_name: &str) -> Option<String> {
     Some(format!("{}.{}", scope_name, dut_name))
 }
 
+/// Extract the meaningful suffix from a Chisel-generated signal name
+/// for cross-module boundary matching.
+///
+/// Chisel renames signals at module boundaries. For example:
+/// - WBU input:  `io_in_bits_decode_cf_redirect_target`
+/// - EXU output: `_exu_io_out_bits_decode_cf_redirect_target`
+/// - ALU output: `io_redirect_target`
+///
+/// All share the suffix `redirect_target`. This function extracts it
+/// by splitting on `_` and taking the last two segments.
+///
+/// Returns at least the last segment. If there's only one segment,
+/// returns the full signal name.
+pub fn extract_signal_suffix(signal_name: &str) -> &str {
+    let parts: Vec<&str> = signal_name.split('_').collect();
+    if parts.len() >= 2 {
+        // Take last 2 segments: e.g., "redirect_target", "out_bits", "rf_data"
+        let start = parts.len() - 2;
+        // But skip generic Chisel prefixes like "bits", "data" if they are the only suffix
+        let suffix = &signal_name[parts[..start].iter().map(|s| s.len() + 1).sum::<usize>()..];
+        suffix
+    } else {
+        signal_name
+    }
+}
+
+#[cfg(test)]
+mod suffix_tests {
+    use super::*;
+
+    #[test]
+    fn test_extract_suffix() {
+        assert_eq!(
+            extract_signal_suffix("io_in_bits_decode_cf_redirect_target"),
+            "redirect_target"
+        );
+        assert_eq!(
+            extract_signal_suffix("_exu_io_out_bits_decode_cf_redirect_target"),
+            "redirect_target"
+        );
+        assert_eq!(extract_signal_suffix("io_redirect_target"), "redirect_target");
+        assert_eq!(extract_signal_suffix("io_out_bits"), "out_bits");
+        assert_eq!(extract_signal_suffix("io_in_bits_func"), "bits_func");
+    }
+}
+
 /// Returns the top-k most frequent items from a collection.
 ///
 /// # Arguments
