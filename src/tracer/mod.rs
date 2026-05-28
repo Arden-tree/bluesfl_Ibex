@@ -263,7 +263,12 @@ where
         Option<Vec<(NodeID, Option<TimeAnnotation>)>>,
         EarlyStop,
     )> {
-        assert_eq!(block.get_scope(), cur_scope);
+        // ModuleOutput blocks may be in a child scope (e.g., ...backend.wbu)
+        // while cur_scope is the parent (e.g., ...backend). Only assert for
+        // Always/Assign blocks which should always match.
+        if matches!(block.get_block_type(), BlockType::Always(_) | BlockType::Assign) {
+            assert_eq!(block.get_scope(), cur_scope);
+        }
         let btype = block.get_block_type();
         let (next_time, vars) = match btype.clone() {
             BlockType::Always(_) | BlockType::Assign => {
@@ -354,11 +359,16 @@ where
         });
 
         let next_scope = if matches!(block.get_block_type(), BlockType::ModuleInput) {
+            // ModuleInput: signal goes from parent to child, continue in parent scope
             if let Some(last_scope) = get_last_scope(&cur_scope) {
                 last_scope
             } else {
                 cur_scope
             }
+        } else if matches!(block.get_block_type(), BlockType::ModuleOutput) {
+            // ModuleOutput: signal goes from child to parent, but the input_nodes
+            // are child-internal signals. Continue tracing in the child module's scope.
+            block.get_scope()
         } else {
             cur_scope
         };
@@ -462,8 +472,10 @@ where
 
             // FIXME: get_block ignored covered block.
             let get_block_result = self.get_block_result(&cur_scope, &head_sig);
+            warn!("TRACE: get_block_result for scope={}, sig={}, results={}", cur_scope, head_sig.get_text(),
+                get_block_result.iter().map(|(s, blocks)| format!("{}:{}", s, blocks.len())).collect::<Vec<_>>().join(", "));
 
-            for (cur_scope, block) in get_block_result
+            for (block_scope, block) in get_block_result
                 .iter()
                 .map(|(scope, blocks)| blocks.iter().map(|block| (scope.clone(), block)))
                 .flatten()
@@ -488,6 +500,7 @@ where
                         block.get_bid(),
                         cur_time
                     );
+                    warn!("TRACE: block bid={} block.scope={} passed_scope={}", block.get_bid(), block.get_scope(), cur_scope);
                     if let Some((next_scope, Some(next_vars_with_time), early_stop)) = self
                         .get_driven_signals_fixpoint(block, &cur_scope, cur_time, &head_sig)
                         .await
