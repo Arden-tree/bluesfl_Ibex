@@ -533,7 +533,74 @@ where
                     .map(|(node, t)| (node, Some(t)))
                     .collect::<Vec<_>>()
             });
-            Some((next_scope.to_string(), suspicious_vars, EarlyStop::None))
+
+            // When LLM returns variables that are ModuleInput ports of the current scope,
+            // map them through port_connections to parent scope signals. This enables
+            // cross-module tracing (e.g., WBU input → Backend pipeline register → EXU output).
+            let mapped_vars = suspicious_vars.as_ref().and_then(|vars| {
+                warn!("LLM: checking ModuleInput mapping for {} vars in scope={}", vars.len(), next_scope);
+                let scope_blocks = match self.get_scope_blocks(cur_scope) {
+                    Ok(b) => b,
+                    Err(e) => { warn!("LLM: get_scope_blocks failed: {}", e); return None; }
+                };
+                let input_blocks: Vec<_> = scope_blocks
+                    .iter()
+                    .filter(|b| matches!(b.get_block_type(), BlockType::ModuleInput))
+                    .collect();
+                warn!("LLM: found {} ModuleInput blocks in scope {}", input_blocks.len(), cur_scope);
+                if input_blocks.is_empty() {
+                    return None;
+                }
+                // Debug: log first few input block output names
+                for (i, ib) in input_blocks.iter().take(5).enumerate() {
+                    let out_names: Vec<&str> = ib.get_output_nodes().iter().take(3).map(|n| n.get_text()).collect();
+                    warn!("LLM: ModuleInput block[{}] bid={} outputs={:?}", i, ib.get_bid(), out_names);
+                }
+                let mut mapped = Vec::new();
+                let mut any_mapped = false;
+                for (node, t) in vars {
+                    let node_text = node.get_text();
+                    let mut found = false;
+                    for ib in &input_blocks {
+                        // Check if this ModuleInput block's output node matches the LLM signal
+                        if ib.get_output_nodes().iter().any(|on| on.get_text() == node_text) {
+                            // Map through dataflow: ModuleInput output → parent scope input signals
+                            let parent_vars: Vec<_> = ib.get_input_nodes()
+                                .into_iter()
+                                .cloned()
+                                .map(|pn| (pn, t.clone()))
+                                .collect();
+                            if !parent_vars.is_empty() {
+                                mapped.extend(parent_vars);
+                                found = true;
+                                any_mapped = true;
+                            }
+                        }
+                    }
+                    if !found {
+                        mapped.push((node.clone(), t.clone()));
+                    }
+                }
+                if any_mapped {
+                    // Jump to parent scope for the mapped signals
+                    let parent_scope = crate::tracer::get_last_scope(next_scope)
+                        .unwrap_or(next_scope)
+                        .to_string();
+                    warn!(
+                        "LLM: mapped {} vars through ModuleInput ports, jumping to parent scope={}",
+                        mapped.len(), parent_scope
+                    );
+                    Some((parent_scope, mapped))
+                } else {
+                    None
+                }
+            });
+
+            if let Some((parent_scope, mapped_vars)) = mapped_vars {
+                Some((parent_scope, Some(mapped_vars), EarlyStop::None))
+            } else {
+                Some((next_scope.to_string(), suspicious_vars, EarlyStop::None))
+            }
         }
     }
 
