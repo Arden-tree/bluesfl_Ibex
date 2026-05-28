@@ -218,13 +218,12 @@ where
                                 .and_then(|name| t.as_i64().and_then(|time| Some((name, time))))
                         })
                         .map(|(v, t)| {
+                            let v_clean = v.find("[").map(|pos| &v[..pos]).unwrap_or(v);
                             let ret = input_var_nodes_with_t
                                 .iter()
                                 // here llm ignores which time he wnat to backtrace.
                                 .filter(|(node, time)| {
-                                    // llm returned signal name maybe an array, e.g., var_1[0]
-                                    let v = v.find("[").map(|pos| &v[..pos]).unwrap_or(v);
-                                    node.get_text() == v && *time == t
+                                    node.get_text() == v_clean && *time == t
                                 })
                                 .collect::<Vec<_>>();
                             if ret.is_empty() {
