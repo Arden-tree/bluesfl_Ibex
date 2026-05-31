@@ -1,0 +1,308 @@
+[
+  [
+    "CSR",
+    [
+      {
+        "Identifier": [
+          {
+            "offset": 6126,
+            "line": 82,
+            "original_line": 97,
+            "len": 18
+          },
+          "io_redirect_target"
+        ]
+      },
+      515
+    ]
+  ],
+  [
+    "ALU",
+    [
+      {
+        "Identifier": [
+          {
+            "offset": 6126,
+            "line": 82,
+            "original_line": 97,
+            "len": 18
+          },
+          "io_redirect_target"
+        ]
+      },
+      515
+    ]
+  ],
+  [
+    "WBU",
+    [
+      {
+        "Identifier": [
+          {
+            "offset": 6126,
+            "line": 82,
+            "original_line": 97,
+            "len": 18
+          },
+          "io_redirect_target"
+        ]
+      },
+      515
+    ]
+  ],
+  [
+    "MOU",
+    [
+      {
+        "Identifier": [
+          {
+            "offset": 6126,
+            "line": 82,
+            "original_line": 97,
+            "len": 18
+          },
+          "io_redirect_target"
+        ]
+      },
+      515
+    ]
+  ],
+  [
+    "EXU",
+    [
+      {
+        "Identifier": [
+          {
+            "offset": 23961,
+            "line": 262,
+            "original_line": 277,
+            "len": 42
+          },
+          "_exu_io_out_bits_decode_cf_redirect_target"
+        ]
+      },
+      513
+    ]
+  ],
+  [
+    "Frontend_inorder",
+    [
+      {
+        "Identifier": [
+          {
+            "offset": 117860,
+            "line": 1238,
+            "original_line": 1391,
+            "len": 21
+          },
+          "_frontend_io_flushVec"
+        ]
+      },
+      515
+    ]
+  ],
+  [
+    "ISU",
+    [
+      {
+        "Identifier": [
+          {
+            "offset": 22991,
+            "line": 254,
+            "original_line": 269,
+            "len": 26
+          },
+          "_isu_io_out_bits_data_src1"
+        ]
+      },
+      513
+    ]
+  ],
+  [
+    "ISU",
+    [
+      {
+        "Identifier": [
+          {
+            "offset": 18837,
+            "line": 230,
+            "original_line": 245,
+            "len": 22
+          },
+          "_isu_io_out_bits_cf_pc"
+        ]
+      },
+      513
+    ]
+  ],
+  [
+    "MOU",
+    [
+      {
+        "Identifier": [
+          {
+            "offset": 28999,
+            "line": 388,
+            "original_line": 388,
+            "len": 22
+          },
+          "_mou_io_redirect_valid"
+        ]
+      },
+      513
+    ]
+  ],
+  [
+    "IFU_inorder",
+    [
+      {
+        "Identifier": [
+          {
+            "offset": 26069,
+            "line": 345,
+            "original_line": 375,
+            "len": 16
+          },
+          "_ifu_io_flushVec"
+        ]
+      },
+      515
+    ]
+  ],
+  [
+    "Backend_inorder",
+    [
+      {
+        "Identifier": [
+          {
+            "offset": 111533,
+            "line": 1183,
+            "original_line": 1336,
+            "len": 26
+          },
+          "_backend_io_redirect_valid"
+        ]
+      },
+      515
+    ]
+  ],
+  [
+    "Frontend_inorder",
+    [
+      {
+        "Identifier": [
+          {
+            "offset": 117860,
+            "line": 1238,
+            "original_line": 1391,
+            "len": 21
+          },
+          "_frontend_io_flushVec"
+        ]
+      },
+      513
+    ]
+  ],
+  [
+    "ISU",
+    [
+      {
+        "Identifier": [
+          {
+            "offset": 22127,
+            "line": 249,
+            "original_line": 264,
+            "len": 28
+          },
+          "_isu_io_out_bits_ctrl_fuType"
+        ]
+      },
+      511
+    ]
+  ],
+  [
+    "CSR",
+    [
+      {
+        "Identifier": [
+          {
+            "offset": 6223,
+            "line": 83,
+            "original_line": 98,
+            "len": 17
+          },
+          "io_redirect_valid"
+        ]
+      },
+      515
+    ]
+  ],
+  [
+    "ALU",
+    [
+      {
+        "Identifier": [
+          {
+            "offset": 6223,
+            "line": 83,
+            "original_line": 98,
+            "len": 17
+          },
+          "io_redirect_valid"
+        ]
+      },
+      515
+    ]
+  ],
+  [
+    "WBU",
+    [
+      {
+        "Identifier": [
+          {
+            "offset": 6223,
+            "line": 83,
+            "original_line": 98,
+            "len": 17
+          },
+          "io_redirect_valid"
+        ]
+      },
+      515
+    ]
+  ],
+  [
+    "MOU",
+    [
+      {
+        "Identifier": [
+          {
+            "offset": 6223,
+            "line": 83,
+            "original_line": 98,
+            "len": 17
+          },
+          "io_redirect_valid"
+        ]
+      },
+      515
+    ]
+  ],
+  [
+    "ISU",
+    [
+      {
+        "Identifier": [
+          {
+            "offset": 22127,
+            "line": 249,
+            "original_line": 264,
+            "len": 28
+          },
+          "_isu_io_out_bits_ctrl_fuType"
+        ]
+      },
+      513
+    ]
+  ]
+]

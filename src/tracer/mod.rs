@@ -146,10 +146,14 @@ where
                 let mut res = vec![];
                 for block in blocks.into_iter() {
                     if matches!(block.get_block_type(), BlockType::ModuleOutput)
-                        && block
+                        && (block
                             .get_output_nodes()
                             .iter()
                             .any(|node| node.get_text() == sig.get_text())
+                        || block
+                            .get_input_nodes()
+                            .iter()
+                            .any(|node| node.get_text() == sig.get_text()))
                     {
                         res.push(block.clone());
                     }
@@ -179,11 +183,11 @@ where
             }
         };
 
-        // Fallback: if normal scope-based search failed, try suffix-based cross-scope matching.
-        // This handles Chisel-generated Verilog where signal names change at module boundaries
-        // (e.g., io_in_bits_decode_cf_redirect_target in WBU vs io_redirect_target in ALU).
         if result.is_empty() {
-            return self.find_block_by_signal_suffix(&original_scope, sig);
+            warn!(
+                "No blocks found for sig='{}' in scope='{}' after port_connections search",
+                sig.get_text(), original_scope
+            );
         }
         result
     }

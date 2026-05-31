@@ -10,6 +10,8 @@ Response format in json wrap in ```json```:
 - `check_signals`: list of signals that you want to further check. each element is a dict with the following keys: "
   name" and "time". elements in this list should be chosen from
   `Signals in current code snippet that affect the output signal`.
+  IMPORTANT: When terminate is false, you MUST provide at least one signal in check_signals from the input signals list.
+  Choose the input signal(s) that are most likely carrying the wrong value that caused the faulty output.
 - `terminate`: bool, whether to terminate the debugging process. If you think you found the root cause, set it to true.
 
 NOTE:

@@ -1,0 +1,17 @@
+{
+  "bug_id": "U6_backend",
+  "token_usage": {
+    "input_tokens": 227332,
+    "output_tokens": 20226,
+    "total_tokens": 247558
+  },
+  "token_price": null,
+  "choices": [
+    {
+      "module_name": "ALU",
+      "line_number": null,
+      "block_id": 5841,
+      "score": 1.0
+    }
+  ]
+}

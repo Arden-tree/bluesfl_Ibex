@@ -1,0 +1,2184 @@
+[
+  {
+    "bid": 6039,
+    "scope": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.backend.exu.csr",
+    "suspicious_input_vars_with_time": [
+      [
+        {
+          "Identifier": [
+            {
+              "len": 18,
+              "line": 77,
+              "offset": 4771,
+              "original_line": 95
+            },
+            "io_redirect_target"
+          ]
+        },
+        515
+      ]
+    ],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 18,
+            "line": 82,
+            "offset": 6126,
+            "original_line": 97
+          },
+          "io_redirect_target"
+        ]
+      }
+    ],
+    "time": 515,
+    "type": "ModuleOutput"
+  },
+  {
+    "bid": 5814,
+    "scope": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.backend.exu.alu",
+    "suspicious_input_vars_with_time": [
+      [
+        {
+          "Identifier": [
+            {
+              "len": 18,
+              "line": 56,
+              "offset": 2378,
+              "original_line": 77
+            },
+            "io_redirect_target"
+          ]
+        },
+        515
+      ]
+    ],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 18,
+            "line": 82,
+            "offset": 6126,
+            "original_line": 97
+          },
+          "io_redirect_target"
+        ]
+      }
+    ],
+    "time": 515,
+    "type": "ModuleOutput"
+  },
+  {
+    "bid": 3893,
+    "scope": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.backend.wbu",
+    "suspicious_input_vars_with_time": [
+      [
+        {
+          "Identifier": [
+            {
+              "len": 18,
+              "line": 19,
+              "offset": 1637,
+              "original_line": 19
+            },
+            "io_redirect_target"
+          ]
+        },
+        515
+      ]
+    ],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 18,
+            "line": 82,
+            "offset": 6126,
+            "original_line": 97
+          },
+          "io_redirect_target"
+        ]
+      }
+    ],
+    "time": 515,
+    "type": "ModuleOutput"
+  },
+  {
+    "bid": 6311,
+    "scope": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.backend.exu.mou",
+    "suspicious_input_vars_with_time": [
+      [
+        {
+          "Identifier": [
+            {
+              "len": 18,
+              "line": 6,
+              "offset": 367,
+              "original_line": 6
+            },
+            "io_redirect_target"
+          ]
+        },
+        515
+      ]
+    ],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 18,
+            "line": 82,
+            "offset": 6126,
+            "original_line": 97
+          },
+          "io_redirect_target"
+        ]
+      }
+    ],
+    "time": 515,
+    "type": "ModuleOutput"
+  },
+  {
+    "bid": 6101,
+    "scope": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.backend.exu.csr",
+    "suspicious_input_vars_with_time": [
+      [
+        {
+          "Identifier": [
+            {
+              "len": 8,
+              "line": 311,
+              "offset": 22985,
+              "original_line": 311
+            },
+            "io_flush"
+          ]
+        },
+        515
+      ],
+      [
+        {
+          "Identifier": [
+            {
+              "len": 11,
+              "line": 311,
+              "offset": 22970,
+              "original_line": 311
+            },
+            "io_in_valid"
+          ]
+        },
+        515
+      ]
+    ],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 18,
+            "line": 77,
+            "offset": 4771,
+            "original_line": 95
+          },
+          "io_redirect_target"
+        ]
+      }
+    ],
+    "time": 515,
+    "type": "Assign"
+  },
+  {
+    "bid": 5841,
+    "scope": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.backend.exu.alu",
+    "suspicious_input_vars_with_time": [
+      [
+        {
+          "Identifier": [
+            {
+              "len": 20,
+              "line": 177,
+              "offset": 14785,
+              "original_line": 177
+            },
+            "io_in_bits_data_src1"
+          ]
+        },
+        515
+      ]
+    ],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 18,
+            "line": 56,
+            "offset": 2378,
+            "original_line": 77
+          },
+          "io_redirect_target"
+        ]
+      }
+    ],
+    "time": 515,
+    "type": "Assign"
+  },
+  {
+    "bid": 3908,
+    "scope": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.backend.wbu",
+    "suspicious_input_vars_with_time": [
+      [
+        {
+          "Identifier": [
+            {
+              "len": 42,
+              "line": 484,
+              "offset": 42133,
+              "original_line": 560
+            },
+            "wbu_io_in_bits_r_decode_cf_redirect_target"
+          ]
+        },
+        515
+      ]
+    ],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 18,
+            "line": 19,
+            "offset": 1637,
+            "original_line": 19
+          },
+          "io_redirect_target"
+        ]
+      }
+    ],
+    "time": 515,
+    "type": "Assign"
+  },
+  {
+    "bid": 6320,
+    "scope": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.backend.exu.mou",
+    "suspicious_input_vars_with_time": [
+      [
+        {
+          "Identifier": [
+            {
+              "len": 16,
+              "line": 374,
+              "offset": 28089,
+              "original_line": 374
+            },
+            "io_in_bits_cf_pc"
+          ]
+        },
+        515
+      ]
+    ],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 18,
+            "line": 6,
+            "offset": 367,
+            "original_line": 6
+          },
+          "io_redirect_target"
+        ]
+      }
+    ],
+    "time": 515,
+    "type": "Assign"
+  },
+  {
+    "bid": 3792,
+    "scope": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.backend.exu",
+    "suspicious_input_vars_with_time": [
+      [
+        {
+          "Identifier": [
+            {
+              "len": 8,
+              "line": 422,
+              "offset": 37345,
+              "original_line": 498
+            },
+            "io_flush"
+          ]
+        },
+        515
+      ]
+    ],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 8,
+            "line": 311,
+            "offset": 22985,
+            "original_line": 311
+          },
+          "io_flush"
+        ]
+      }
+    ],
+    "time": 515,
+    "type": "ModuleInput"
+  },
+  {
+    "bid": 3739,
+    "scope": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.backend.exu",
+    "suspicious_input_vars_with_time": [
+      [
+        {
+          "Identifier": [
+            {
+              "len": 5,
+              "line": 369,
+              "offset": 32299,
+              "original_line": 445
+            },
+            "valid"
+          ]
+        },
+        515
+      ]
+    ],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 11,
+            "line": 311,
+            "offset": 22970,
+            "original_line": 311
+          },
+          "io_in_valid"
+        ]
+      }
+    ],
+    "time": 515,
+    "type": "ModuleInput"
+  },
+  {
+    "bid": 3776,
+    "scope": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.backend.exu",
+    "suspicious_input_vars_with_time": [
+      [
+        {
+          "Identifier": [
+            {
+              "len": 26,
+              "line": 406,
+              "offset": 35989,
+              "original_line": 482
+            },
+            "exu_io_in_bits_r_data_src1"
+          ]
+        },
+        515
+      ]
+    ],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 20,
+            "line": 177,
+            "offset": 14785,
+            "original_line": 177
+          },
+          "io_in_bits_data_src1"
+        ]
+      }
+    ],
+    "time": 515,
+    "type": "ModuleInput"
+  },
+  {
+    "bid": 2675,
+    "scope": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.backend",
+    "suspicious_input_vars_with_time": [
+      [
+        {
+          "Identifier": [
+            {
+              "len": 42,
+              "line": 262,
+              "offset": 23961,
+              "original_line": 277
+            },
+            "_exu_io_out_bits_decode_cf_redirect_target"
+          ]
+        },
+        513
+      ]
+    ],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 42,
+            "line": 484,
+            "offset": 42133,
+            "original_line": 560
+          },
+          "wbu_io_in_bits_r_decode_cf_redirect_target"
+        ]
+      }
+    ],
+    "time": 515,
+    "type": "AlwaysSeq"
+  },
+  {
+    "bid": 3741,
+    "scope": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.backend.exu",
+    "suspicious_input_vars_with_time": [
+      [
+        {
+          "Identifier": [
+            {
+              "len": 22,
+              "line": 371,
+              "offset": 32513,
+              "original_line": 447
+            },
+            "exu_io_in_bits_r_cf_pc"
+          ]
+        },
+        515
+      ]
+    ],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 16,
+            "line": 374,
+            "offset": 28089,
+            "original_line": 374
+          },
+          "io_in_bits_cf_pc"
+        ]
+      }
+    ],
+    "time": 515,
+    "type": "ModuleInput"
+  },
+  {
+    "bid": 2624,
+    "scope": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.backend",
+    "suspicious_input_vars_with_time": [
+      [
+        {
+          "Identifier": [
+            {
+              "len": 21,
+              "line": 1238,
+              "offset": 117860,
+              "original_line": 1391
+            },
+            "_frontend_io_flushVec"
+          ]
+        },
+        515
+      ]
+    ],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 8,
+            "line": 422,
+            "offset": 37345,
+            "original_line": 498
+          },
+          "io_flush"
+        ]
+      }
+    ],
+    "time": 515,
+    "type": "ModuleInput"
+  },
+  {
+    "bid": 3782,
+    "scope": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.backend.exu",
+    "suspicious_input_vars_with_time": [
+      [
+        {
+          "Identifier": [
+            {
+              "len": 37,
+              "line": 49,
+              "offset": 4572,
+              "original_line": 49
+            },
+            "io_out_bits_decode_cf_redirect_target"
+          ]
+        },
+        513
+      ]
+    ],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 42,
+            "line": 262,
+            "offset": 23961,
+            "original_line": 277
+          },
+          "_exu_io_out_bits_decode_cf_redirect_target"
+        ]
+      }
+    ],
+    "time": 513,
+    "type": "ModuleOutput"
+  },
+  {
+    "bid": 2565,
+    "scope": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.frontend",
+    "suspicious_input_vars_with_time": [
+      [
+        {
+          "Identifier": [
+            {
+              "len": 11,
+              "line": 106,
+              "offset": 8312,
+              "original_line": 121
+            },
+            "io_flushVec"
+          ]
+        },
+        515
+      ]
+    ],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 21,
+            "line": 1238,
+            "offset": 117860,
+            "original_line": 1391
+          },
+          "_frontend_io_flushVec"
+        ]
+      }
+    ],
+    "time": 515,
+    "type": "ModuleOutput"
+  },
+  {
+    "bid": 1085,
+    "scope": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore",
+    "suspicious_input_vars_with_time": [
+      [
+        {
+          "Identifier": [
+            {
+              "len": 5,
+              "line": 235,
+              "offset": 18925,
+              "original_line": 258
+            },
+            "reset"
+          ]
+        },
+        513
+      ]
+    ],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 5,
+            "line": 1205,
+            "offset": 113829,
+            "original_line": 1358
+          },
+          "reset"
+        ]
+      }
+    ],
+    "time": 513,
+    "type": "ModuleInput"
+  },
+  {
+    "bid": 3671,
+    "scope": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.backend.isu",
+    "suspicious_input_vars_with_time": [
+      [
+        {
+          "Identifier": [
+            {
+              "len": 21,
+              "line": 93,
+              "offset": 6968,
+              "original_line": 108
+            },
+            "io_out_bits_data_src1"
+          ]
+        },
+        513
+      ]
+    ],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 26,
+            "line": 254,
+            "offset": 22991,
+            "original_line": 269
+          },
+          "_isu_io_out_bits_data_src1"
+        ]
+      }
+    ],
+    "time": 513,
+    "type": "ModuleOutput"
+  },
+  {
+    "bid": 3863,
+    "scope": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.backend.exu",
+    "suspicious_input_vars_with_time": [
+      [
+        {
+          "Identifier": [
+            {
+              "len": 22,
+              "line": 388,
+              "offset": 28999,
+              "original_line": 388
+            },
+            "_mou_io_redirect_valid"
+          ]
+        },
+        513
+      ]
+    ],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 37,
+            "line": 49,
+            "offset": 4572,
+            "original_line": 49
+          },
+          "io_out_bits_decode_cf_redirect_target"
+        ]
+      }
+    ],
+    "time": 513,
+    "type": "Assign"
+  },
+  {
+    "bid": 3647,
+    "scope": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.backend.isu",
+    "suspicious_input_vars_with_time": [
+      [
+        {
+          "Identifier": [
+            {
+              "len": 17,
+              "line": 69,
+              "offset": 4605,
+              "original_line": 84
+            },
+            "io_out_bits_cf_pc"
+          ]
+        },
+        513
+      ]
+    ],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 22,
+            "line": 230,
+            "offset": 18837,
+            "original_line": 245
+          },
+          "_isu_io_out_bits_cf_pc"
+        ]
+      }
+    ],
+    "time": 513,
+    "type": "ModuleOutput"
+  },
+  {
+    "bid": 2589,
+    "scope": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.frontend",
+    "suspicious_input_vars_with_time": [
+      [
+        {
+          "Identifier": [
+            {
+              "len": 16,
+              "line": 345,
+              "offset": 26069,
+              "original_line": 375
+            },
+            "_ifu_io_flushVec"
+          ]
+        },
+        515
+      ]
+    ],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 11,
+            "line": 106,
+            "offset": 8312,
+            "original_line": 121
+          },
+          "io_flushVec"
+        ]
+      }
+    ],
+    "time": 515,
+    "type": "Assign"
+  },
+  {
+    "bid": 36,
+    "scope": "TOP.SimTop.cpu.soc.nutcore.cpu.soc",
+    "suspicious_input_vars_with_time": [
+      [
+        {
+          "Identifier": [
+            {
+              "len": 5,
+              "line": 74,
+              "offset": 5989,
+              "original_line": 74
+            },
+            "reset"
+          ]
+        },
+        513
+      ]
+    ],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 5,
+            "line": 235,
+            "offset": 18925,
+            "original_line": 258
+          },
+          "reset"
+        ]
+      }
+    ],
+    "time": 513,
+    "type": "ModuleInput"
+  },
+  {
+    "bid": 3687,
+    "scope": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.backend.isu",
+    "suspicious_input_vars_with_time": [
+      [
+        {
+          "Identifier": [
+            {
+              "len": 26,
+              "line": 311,
+              "offset": 27885,
+              "original_line": 387
+            },
+            "io_in_0_bits_ctrl_src1Type"
+          ]
+        },
+        513
+      ]
+    ],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 21,
+            "line": 93,
+            "offset": 6968,
+            "original_line": 108
+          },
+          "io_out_bits_data_src1"
+        ]
+      }
+    ],
+    "time": 513,
+    "type": "Assign"
+  },
+  {
+    "bid": 6312,
+    "scope": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.backend.exu.mou",
+    "suspicious_input_vars_with_time": [
+      [
+        {
+          "Identifier": [
+            {
+              "len": 17,
+              "line": 7,
+              "offset": 456,
+              "original_line": 7
+            },
+            "io_redirect_valid"
+          ]
+        },
+        513
+      ]
+    ],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 22,
+            "line": 388,
+            "offset": 28999,
+            "original_line": 388
+          },
+          "_mou_io_redirect_valid"
+        ]
+      }
+    ],
+    "time": 513,
+    "type": "ModuleOutput"
+  },
+  {
+    "bid": 3705,
+    "scope": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.backend.isu",
+    "suspicious_input_vars_with_time": [
+      [
+        {
+          "Identifier": [
+            {
+              "len": 18,
+              "line": 292,
+              "offset": 26623,
+              "original_line": 368
+            },
+            "io_in_0_bits_cf_pc"
+          ]
+        },
+        513
+      ]
+    ],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 17,
+            "line": 69,
+            "offset": 4605,
+            "original_line": 84
+          },
+          "io_out_bits_cf_pc"
+        ]
+      }
+    ],
+    "time": 513,
+    "type": "Assign"
+  },
+  {
+    "bid": 3423,
+    "scope": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.frontend.ifu",
+    "suspicious_input_vars_with_time": [
+      [
+        {
+          "Identifier": [
+            {
+              "len": 11,
+              "line": 51,
+              "offset": 2685,
+              "original_line": 66
+            },
+            "io_flushVec"
+          ]
+        },
+        515
+      ]
+    ],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 16,
+            "line": 345,
+            "offset": 26069,
+            "original_line": 375
+          },
+          "_ifu_io_flushVec"
+        ]
+      }
+    ],
+    "time": 515,
+    "type": "ModuleOutput"
+  },
+  {
+    "bid": 19,
+    "scope": "TOP.SimTop.cpu.soc.nutcore.cpu",
+    "suspicious_input_vars_with_time": [
+      [
+        {
+          "Identifier": [
+            {
+              "len": 5,
+              "line": 75,
+              "offset": 3900,
+              "original_line": 99
+            },
+            "reset"
+          ]
+        },
+        513
+      ]
+    ],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 5,
+            "line": 74,
+            "offset": 5989,
+            "original_line": 74
+          },
+          "reset"
+        ]
+      }
+    ],
+    "time": 513,
+    "type": "ModuleInput"
+  },
+  {
+    "bid": 2614,
+    "scope": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.backend",
+    "suspicious_input_vars_with_time": [
+      [
+        {
+          "Identifier": [
+            {
+              "len": 7,
+              "line": 1228,
+              "offset": 116590,
+              "original_line": 1381
+            },
+            "_GEN_19"
+          ]
+        },
+        513
+      ]
+    ],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 26,
+            "line": 311,
+            "offset": 27885,
+            "original_line": 387
+          },
+          "io_in_0_bits_ctrl_src1Type"
+        ]
+      }
+    ],
+    "time": 513,
+    "type": "ModuleInput"
+  },
+  {
+    "bid": 6321,
+    "scope": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.backend.exu.mou",
+    "suspicious_input_vars_with_time": [
+      [
+        {
+          "Identifier": [
+            {
+              "len": 11,
+              "line": 372,
+              "offset": 27921,
+              "original_line": 372
+            },
+            "io_in_valid"
+          ]
+        },
+        513
+      ],
+      [
+        {
+          "Identifier": [
+            {
+              "len": 8,
+              "line": 372,
+              "offset": 27936,
+              "original_line": 372
+            },
+            "io_flush"
+          ]
+        },
+        513
+      ],
+      [
+        {
+          "Literal": [
+            {
+              "len": 5,
+              "line": 372,
+              "offset": 27914,
+              "original_line": 372
+            },
+            "3'h4"
+          ]
+        },
+        513
+      ],
+      [
+        {
+          "Identifier": [
+            {
+              "len": 22,
+              "line": 372,
+              "offset": 27888,
+              "original_line": 372
+            },
+            "io_in_bits_ctrl_fuType"
+          ]
+        },
+        513
+      ]
+    ],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 17,
+            "line": 7,
+            "offset": 456,
+            "original_line": 7
+          },
+          "io_redirect_valid"
+        ]
+      }
+    ],
+    "time": 513,
+    "type": "Assign"
+  },
+  {
+    "bid": 2595,
+    "scope": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.backend",
+    "suspicious_input_vars_with_time": [
+      [
+        {
+          "Identifier": [
+            {
+              "len": 6,
+              "line": 1209,
+              "offset": 114187,
+              "original_line": 1362
+            },
+            "_GEN_0"
+          ]
+        },
+        513
+      ]
+    ],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 18,
+            "line": 292,
+            "offset": 26623,
+            "original_line": 368
+          },
+          "io_in_0_bits_cf_pc"
+        ]
+      }
+    ],
+    "time": 513,
+    "type": "ModuleInput"
+  },
+  {
+    "bid": 3452,
+    "scope": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.frontend.ifu",
+    "suspicious_input_vars_with_time": [
+      [
+        {
+          "Identifier": [
+            {
+              "len": 17,
+              "line": 209,
+              "offset": 16037,
+              "original_line": 239
+            },
+            "io_redirect_valid"
+          ]
+        },
+        515
+      ]
+    ],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 11,
+            "line": 51,
+            "offset": 2685,
+            "original_line": 66
+          },
+          "io_flushVec"
+        ]
+      }
+    ],
+    "time": 515,
+    "type": "Assign"
+  },
+  {
+    "bid": 2,
+    "scope": "TOP.SimTop.cpu.soc.nutcore",
+    "suspicious_input_vars_with_time": [],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 5,
+            "line": 75,
+            "offset": 3900,
+            "original_line": 99
+          },
+          "reset"
+        ]
+      }
+    ],
+    "time": 513,
+    "type": "ModuleInput"
+  },
+  {
+    "bid": 1161,
+    "scope": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore",
+    "suspicious_input_vars_with_time": [
+      [
+        {
+          "Identifier": [
+            {
+              "len": 26,
+              "line": 494,
+              "offset": 40346,
+              "original_line": 509
+            },
+            "dataBuffer_0_ctrl_src1Type"
+          ]
+        },
+        513
+      ],
+      [
+        {
+          "Identifier": [
+            {
+              "len": 26,
+              "line": 492,
+              "offset": 40276,
+              "original_line": 507
+            },
+            "dataBuffer_2_ctrl_src1Type"
+          ]
+        },
+        513
+      ],
+      [
+        {
+          "Identifier": [
+            {
+              "len": 26,
+              "line": 491,
+              "offset": 40241,
+              "original_line": 506
+            },
+            "dataBuffer_3_ctrl_src1Type"
+          ]
+        },
+        513
+      ],
+      [
+        {
+          "Identifier": [
+            {
+              "len": 26,
+              "line": 493,
+              "offset": 40311,
+              "original_line": 508
+            },
+            "dataBuffer_1_ctrl_src1Type"
+          ]
+        },
+        513
+      ]
+    ],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 7,
+            "line": 1228,
+            "offset": 116590,
+            "original_line": 1381
+          },
+          "_GEN_19"
+        ]
+      }
+    ],
+    "time": 513,
+    "type": "Assign"
+  },
+  {
+    "bid": 3739,
+    "scope": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.backend.exu",
+    "suspicious_input_vars_with_time": [
+      [
+        {
+          "Identifier": [
+            {
+              "len": 5,
+              "line": 369,
+              "offset": 32299,
+              "original_line": 445
+            },
+            "valid"
+          ]
+        },
+        513
+      ]
+    ],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 11,
+            "line": 372,
+            "offset": 27921,
+            "original_line": 372
+          },
+          "io_in_valid"
+        ]
+      }
+    ],
+    "time": 513,
+    "type": "ModuleInput"
+  },
+  {
+    "bid": 3792,
+    "scope": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.backend.exu",
+    "suspicious_input_vars_with_time": [
+      [
+        {
+          "Identifier": [
+            {
+              "len": 8,
+              "line": 422,
+              "offset": 37345,
+              "original_line": 498
+            },
+            "io_flush"
+          ]
+        },
+        513
+      ]
+    ],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 8,
+            "line": 372,
+            "offset": 27936,
+            "original_line": 372
+          },
+          "io_flush"
+        ]
+      }
+    ],
+    "time": 513,
+    "type": "ModuleInput"
+  },
+  {
+    "bid": 3771,
+    "scope": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.backend.exu",
+    "suspicious_input_vars_with_time": [
+      [
+        {
+          "Identifier": [
+            {
+              "len": 28,
+              "line": 401,
+              "offset": 35381,
+              "original_line": 477
+            },
+            "exu_io_in_bits_r_ctrl_fuType"
+          ]
+        },
+        513
+      ]
+    ],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 22,
+            "line": 372,
+            "offset": 27888,
+            "original_line": 372
+          },
+          "io_in_bits_ctrl_fuType"
+        ]
+      }
+    ],
+    "time": 513,
+    "type": "ModuleInput"
+  },
+  {
+    "bid": 1142,
+    "scope": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore",
+    "suspicious_input_vars_with_time": [
+      [
+        {
+          "Identifier": [
+            {
+              "len": 18,
+              "line": 399,
+              "offset": 36024,
+              "original_line": 414
+            },
+            "dataBuffer_0_cf_pc"
+          ]
+        },
+        513
+      ],
+      [
+        {
+          "Identifier": [
+            {
+              "len": 18,
+              "line": 396,
+              "offset": 35943,
+              "original_line": 411
+            },
+            "dataBuffer_3_cf_pc"
+          ]
+        },
+        513
+      ],
+      [
+        {
+          "Identifier": [
+            {
+              "len": 18,
+              "line": 397,
+              "offset": 35970,
+              "original_line": 412
+            },
+            "dataBuffer_2_cf_pc"
+          ]
+        },
+        513
+      ],
+      [
+        {
+          "Identifier": [
+            {
+              "len": 18,
+              "line": 398,
+              "offset": 35997,
+              "original_line": 413
+            },
+            "dataBuffer_1_cf_pc"
+          ]
+        },
+        513
+      ]
+    ],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 6,
+            "line": 1209,
+            "offset": 114187,
+            "original_line": 1362
+          },
+          "_GEN_0"
+        ]
+      }
+    ],
+    "time": 513,
+    "type": "Assign"
+  },
+  {
+    "bid": 2567,
+    "scope": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.frontend",
+    "suspicious_input_vars_with_time": [
+      [
+        {
+          "Identifier": [
+            {
+              "len": 26,
+              "line": 1183,
+              "offset": 111533,
+              "original_line": 1336
+            },
+            "_backend_io_redirect_valid"
+          ]
+        },
+        515
+      ]
+    ],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 17,
+            "line": 209,
+            "offset": 16037,
+            "original_line": 239
+          },
+          "io_redirect_valid"
+        ]
+      }
+    ],
+    "time": 515,
+    "type": "ModuleInput"
+  },
+  {
+    "bid": 2675,
+    "scope": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.backend",
+    "suspicious_input_vars_with_time": [
+      [
+        {
+          "Identifier": [
+            {
+              "len": 5,
+              "line": 1205,
+              "offset": 113829,
+              "original_line": 1358
+            },
+            "reset"
+          ]
+        },
+        511
+      ]
+    ],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 5,
+            "line": 369,
+            "offset": 32299,
+            "original_line": 445
+          },
+          "valid"
+        ]
+      }
+    ],
+    "time": 513,
+    "type": "AlwaysSeq"
+  },
+  {
+    "bid": 2624,
+    "scope": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.backend",
+    "suspicious_input_vars_with_time": [
+      [
+        {
+          "Identifier": [
+            {
+              "len": 21,
+              "line": 1238,
+              "offset": 117860,
+              "original_line": 1391
+            },
+            "_frontend_io_flushVec"
+          ]
+        },
+        513
+      ]
+    ],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 8,
+            "line": 422,
+            "offset": 37345,
+            "original_line": 498
+          },
+          "io_flush"
+        ]
+      }
+    ],
+    "time": 513,
+    "type": "ModuleInput"
+  },
+  {
+    "bid": 2641,
+    "scope": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.backend",
+    "suspicious_input_vars_with_time": [
+      [
+        {
+          "Identifier": [
+            {
+              "len": 17,
+              "line": 83,
+              "offset": 6223,
+              "original_line": 98
+            },
+            "io_redirect_valid"
+          ]
+        },
+        515
+      ]
+    ],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 26,
+            "line": 1183,
+            "offset": 111533,
+            "original_line": 1336
+          },
+          "_backend_io_redirect_valid"
+        ]
+      }
+    ],
+    "time": 515,
+    "type": "ModuleOutput"
+  },
+  {
+    "bid": 1085,
+    "scope": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore",
+    "suspicious_input_vars_with_time": [
+      [
+        {
+          "Identifier": [
+            {
+              "len": 5,
+              "line": 235,
+              "offset": 18925,
+              "original_line": 258
+            },
+            "reset"
+          ]
+        },
+        511
+      ]
+    ],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 5,
+            "line": 1205,
+            "offset": 113829,
+            "original_line": 1358
+          },
+          "reset"
+        ]
+      }
+    ],
+    "time": 511,
+    "type": "ModuleInput"
+  },
+  {
+    "bid": 2565,
+    "scope": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.frontend",
+    "suspicious_input_vars_with_time": [
+      [
+        {
+          "Identifier": [
+            {
+              "len": 11,
+              "line": 106,
+              "offset": 8312,
+              "original_line": 121
+            },
+            "io_flushVec"
+          ]
+        },
+        513
+      ]
+    ],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 21,
+            "line": 1238,
+            "offset": 117860,
+            "original_line": 1391
+          },
+          "_frontend_io_flushVec"
+        ]
+      }
+    ],
+    "time": 513,
+    "type": "ModuleOutput"
+  },
+  {
+    "bid": 3666,
+    "scope": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.backend.isu",
+    "suspicious_input_vars_with_time": [
+      [
+        {
+          "Identifier": [
+            {
+              "len": 23,
+              "line": 88,
+              "offset": 6475,
+              "original_line": 103
+            },
+            "io_out_bits_ctrl_fuType"
+          ]
+        },
+        511
+      ]
+    ],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 28,
+            "line": 249,
+            "offset": 22127,
+            "original_line": 264
+          },
+          "_isu_io_out_bits_ctrl_fuType"
+        ]
+      }
+    ],
+    "time": 511,
+    "type": "ModuleOutput"
+  },
+  {
+    "bid": 6040,
+    "scope": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.backend.exu.csr",
+    "suspicious_input_vars_with_time": [
+      [
+        {
+          "Identifier": [
+            {
+              "len": 17,
+              "line": 78,
+              "offset": 4863,
+              "original_line": 96
+            },
+            "io_redirect_valid"
+          ]
+        },
+        515
+      ]
+    ],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 17,
+            "line": 83,
+            "offset": 6223,
+            "original_line": 98
+          },
+          "io_redirect_valid"
+        ]
+      }
+    ],
+    "time": 515,
+    "type": "ModuleOutput"
+  },
+  {
+    "bid": 5815,
+    "scope": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.backend.exu.alu",
+    "suspicious_input_vars_with_time": [
+      [
+        {
+          "Identifier": [
+            {
+              "len": 17,
+              "line": 57,
+              "offset": 2467,
+              "original_line": 78
+            },
+            "io_redirect_valid"
+          ]
+        },
+        515
+      ]
+    ],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 17,
+            "line": 83,
+            "offset": 6223,
+            "original_line": 98
+          },
+          "io_redirect_valid"
+        ]
+      }
+    ],
+    "time": 515,
+    "type": "ModuleOutput"
+  },
+  {
+    "bid": 3894,
+    "scope": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.backend.wbu",
+    "suspicious_input_vars_with_time": [
+      [
+        {
+          "Identifier": [
+            {
+              "len": 17,
+              "line": 20,
+              "offset": 1728,
+              "original_line": 20
+            },
+            "io_redirect_valid"
+          ]
+        },
+        515
+      ]
+    ],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 17,
+            "line": 83,
+            "offset": 6223,
+            "original_line": 98
+          },
+          "io_redirect_valid"
+        ]
+      }
+    ],
+    "time": 515,
+    "type": "ModuleOutput"
+  },
+  {
+    "bid": 6312,
+    "scope": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.backend.exu.mou",
+    "suspicious_input_vars_with_time": [
+      [
+        {
+          "Identifier": [
+            {
+              "len": 17,
+              "line": 7,
+              "offset": 456,
+              "original_line": 7
+            },
+            "io_redirect_valid"
+          ]
+        },
+        515
+      ]
+    ],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 17,
+            "line": 83,
+            "offset": 6223,
+            "original_line": 98
+          },
+          "io_redirect_valid"
+        ]
+      }
+    ],
+    "time": 515,
+    "type": "ModuleOutput"
+  },
+  {
+    "bid": 36,
+    "scope": "TOP.SimTop.cpu.soc.nutcore.cpu.soc",
+    "suspicious_input_vars_with_time": [
+      [
+        {
+          "Identifier": [
+            {
+              "len": 5,
+              "line": 74,
+              "offset": 5989,
+              "original_line": 74
+            },
+            "reset"
+          ]
+        },
+        511
+      ]
+    ],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 5,
+            "line": 235,
+            "offset": 18925,
+            "original_line": 258
+          },
+          "reset"
+        ]
+      }
+    ],
+    "time": 511,
+    "type": "ModuleInput"
+  },
+  {
+    "bid": 3724,
+    "scope": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.backend.isu",
+    "suspicious_input_vars_with_time": [
+      [
+        {
+          "Identifier": [
+            {
+              "len": 24,
+              "line": 313,
+              "offset": 28019,
+              "original_line": 389
+            },
+            "io_in_0_bits_ctrl_fuType"
+          ]
+        },
+        511
+      ]
+    ],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 23,
+            "line": 88,
+            "offset": 6475,
+            "original_line": 103
+          },
+          "io_out_bits_ctrl_fuType"
+        ]
+      }
+    ],
+    "time": 511,
+    "type": "Assign"
+  },
+  {
+    "bid": 3909,
+    "scope": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.backend.wbu",
+    "suspicious_input_vars_with_time": [
+      [
+        {
+          "Identifier": [
+            {
+              "len": 7,
+              "line": 481,
+              "offset": 41792,
+              "original_line": 557
+            },
+            "valid_1"
+          ]
+        },
+        515
+      ]
+    ],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 17,
+            "line": 20,
+            "offset": 1728,
+            "original_line": 20
+          },
+          "io_redirect_valid"
+        ]
+      }
+    ],
+    "time": 515,
+    "type": "Assign"
+  },
+  {
+    "bid": 19,
+    "scope": "TOP.SimTop.cpu.soc.nutcore.cpu",
+    "suspicious_input_vars_with_time": [
+      [
+        {
+          "Identifier": [
+            {
+              "len": 5,
+              "line": 75,
+              "offset": 3900,
+              "original_line": 99
+            },
+            "reset"
+          ]
+        },
+        511
+      ]
+    ],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 5,
+            "line": 74,
+            "offset": 5989,
+            "original_line": 74
+          },
+          "reset"
+        ]
+      }
+    ],
+    "time": 511,
+    "type": "ModuleInput"
+  },
+  {
+    "bid": 2616,
+    "scope": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.backend",
+    "suspicious_input_vars_with_time": [
+      [
+        {
+          "Identifier": [
+            {
+              "len": 7,
+              "line": 1230,
+              "offset": 116844,
+              "original_line": 1383
+            },
+            "_GEN_21"
+          ]
+        },
+        511
+      ]
+    ],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 24,
+            "line": 313,
+            "offset": 28019,
+            "original_line": 389
+          },
+          "io_in_0_bits_ctrl_fuType"
+        ]
+      }
+    ],
+    "time": 511,
+    "type": "ModuleInput"
+  },
+  {
+    "bid": 3849,
+    "scope": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.backend.exu",
+    "suspicious_input_vars_with_time": [
+      [
+        {
+          "Identifier": [
+            {
+              "len": 5,
+              "line": 369,
+              "offset": 32299,
+              "original_line": 445
+            },
+            "valid"
+          ]
+        },
+        515
+      ]
+    ],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 10,
+            "line": 272,
+            "offset": 20538,
+            "original_line": 272
+          },
+          "fuValids_3"
+        ]
+      }
+    ],
+    "time": 515,
+    "type": "Assign"
+  },
+  {
+    "bid": 3771,
+    "scope": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.backend.exu",
+    "suspicious_input_vars_with_time": [
+      [
+        {
+          "Identifier": [
+            {
+              "len": 28,
+              "line": 401,
+              "offset": 35381,
+              "original_line": 477
+            },
+            "exu_io_in_bits_r_ctrl_fuType"
+          ]
+        },
+        515
+      ]
+    ],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 22,
+            "line": 176,
+            "offset": 14631,
+            "original_line": 176
+          },
+          "io_in_bits_ctrl_fuType"
+        ]
+      }
+    ],
+    "time": 515,
+    "type": "ModuleInput"
+  },
+  {
+    "bid": 2,
+    "scope": "TOP.SimTop.cpu.soc.nutcore",
+    "suspicious_input_vars_with_time": [],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 5,
+            "line": 75,
+            "offset": 3900,
+            "original_line": 99
+          },
+          "reset"
+        ]
+      }
+    ],
+    "time": 511,
+    "type": "ModuleInput"
+  },
+  {
+    "bid": 1163,
+    "scope": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore",
+    "suspicious_input_vars_with_time": [
+      [
+        {
+          "Identifier": [
+            {
+              "len": 24,
+              "line": 502,
+              "offset": 40732,
+              "original_line": 517
+            },
+            "dataBuffer_2_ctrl_fuType"
+          ]
+        },
+        511
+      ],
+      [
+        {
+          "Identifier": [
+            {
+              "len": 24,
+              "line": 504,
+              "offset": 40798,
+              "original_line": 519
+            },
+            "dataBuffer_0_ctrl_fuType"
+          ]
+        },
+        511
+      ],
+      [
+        {
+          "Identifier": [
+            {
+              "len": 24,
+              "line": 501,
+              "offset": 40699,
+              "original_line": 516
+            },
+            "dataBuffer_3_ctrl_fuType"
+          ]
+        },
+        511
+      ],
+      [
+        {
+          "Identifier": [
+            {
+              "len": 24,
+              "line": 503,
+              "offset": 40765,
+              "original_line": 518
+            },
+            "dataBuffer_1_ctrl_fuType"
+          ]
+        },
+        511
+      ]
+    ],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 7,
+            "line": 1230,
+            "offset": 116844,
+            "original_line": 1383
+          },
+          "_GEN_21"
+        ]
+      }
+    ],
+    "time": 511,
+    "type": "Assign"
+  },
+  {
+    "bid": 3666,
+    "scope": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.backend.isu",
+    "suspicious_input_vars_with_time": [
+      [
+        {
+          "Identifier": [
+            {
+              "len": 23,
+              "line": 88,
+              "offset": 6475,
+              "original_line": 103
+            },
+            "io_out_bits_ctrl_fuType"
+          ]
+        },
+        513
+      ]
+    ],
+    "suspicious_outputs": [
+      {
+        "Identifier": [
+          {
+            "len": 28,
+            "line": 249,
+            "offset": 22127,
+            "original_line": 264
+          },
+          "_isu_io_out_bits_ctrl_fuType"
+        ]
+      }
+    ],
+    "time": 513,
+    "type": "ModuleOutput"
+  }
+]

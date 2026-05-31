@@ -182,8 +182,9 @@ where
         //     "next_time": 31
         // }
         //
-        info!("Block Checker llm response: {}", data);
+        warn!("Block Checker llm FULL response: {}", data);
         let json_data = parse_json_md(&data)?;
+        warn!("Block Checker parsed JSON: {}", serde_json::to_string_pretty(&json_data).unwrap_or_default());
 
         let suspicious = json_data
             .get("suspicious")
@@ -194,54 +195,89 @@ where
             .get("terminate")
             .and_then(|terminate| terminate.as_bool());
 
+        warn!("Block Checker: suspicious={}, terminate={:?}", suspicious, terminate);
+
+        // Log available input_var_nodes for matching
+        warn!("Block Checker: input_var_nodes_with_t ({} total):", input_var_nodes_with_t.len());
+        for (node, t) in input_var_nodes_with_t.iter().take(20) {
+            warn!("  node='{}' time={}", node.get_text(), t);
+        }
+
         if let Some(terminate) = terminate {
             if terminate {
+                // LLM found root cause → stop tracing
                 return Ok((None, suspicious, terminate));
             } else {
-                let vars = json_data
+                // LLM says "not my bug, bug is upstream" → use LLM's check_signals
+                // to select which upstream signals to trace.
+                // Fall back to all dataflow signals only when LLM provides none.
+                let llm_signals = json_data
                     .get("check_signals")
-                    .and_then(|vars| vars.as_array());
-                if let Some(vars) = vars {
-                    let vars = vars
-                        .iter()
-                        .filter_map(|v| v.as_object())
-                        .collect::<Vec<_>>();
-                    let nodes = vars
-                        .into_iter()
-                        .filter_map(|pair| {
-                            pair.get("name").and_then(|name| {
-                                pair.get("time").and_then(|time| Some((name, time)))
-                            })
-                        })
-                        .filter_map(|(v, t)| {
-                            v.as_str()
-                                .and_then(|name| t.as_i64().and_then(|time| Some((name, time))))
-                        })
-                        .map(|(v, t)| {
-                            let v_clean = v.find("[").map(|pos| &v[..pos]).unwrap_or(v);
-                            let ret = input_var_nodes_with_t
-                                .iter()
-                                // here llm ignores which time he wnat to backtrace.
-                                .filter(|(node, time)| {
-                                    node.get_text() == v_clean && *time == t
-                                })
-                                .collect::<Vec<_>>();
-                            if ret.is_empty() {
-                                info!("[out dataflow] LLM request for a signal out of dataflow");
-                            }
-                            ret
-                        })
-                        .flatten()
-                        .map(|(n, t)| ((*n).clone(), (*t).clone()))
-                        .collect::<Vec<_>>();
+                    .and_then(|v| v.as_array());
 
-                    if nodes.is_empty() {
-                        warn!("LLM selected some nodes with times, but cannot parse them and return empty list.");
-                        return Ok((None, suspicious, terminate));
-                    } else {
-                        return Ok((Some(nodes), suspicious, terminate));
+                let mut selected_nodes: Vec<_> = Vec::new();
+
+                if let Some(signals) = llm_signals {
+                    warn!("LLM check_signals ({} items), matching against dataflow", signals.len());
+                    for item in signals {
+                        let name_val = item.get("name");
+                        let time_val = item.get("time");
+                        let (Some(name), Some(time)) = (name_val, time_val) else { continue };
+                        let (Some(name_str), Some(time_int)) = (name.as_str(), time.as_i64()) else { continue };
+
+                        // Strip array bracket suffix for matching
+                        let clean_name = name_str.find("[").map(|pos| &name_str[..pos]).unwrap_or(name_str);
+                        warn!("  matching LLM signal '{}' (clean='{}') at time={}", name_str, clean_name, time_int);
+
+                        // Try exact (name, time) match first
+                        let mut matched: Vec<_> = input_var_nodes_with_t
+                            .iter()
+                            .filter(|(node, t)| node.get_text() == clean_name && *t == time_int)
+                            .collect();
+
+                        // Fallback: match by name only (LLM may return original time,
+                        // while dataflow has regressed time for SEQ blocks)
+                        if matched.is_empty() {
+                            warn!("  exact match failed, trying name-only for '{}'", clean_name);
+                            matched = input_var_nodes_with_t
+                                .iter()
+                                .filter(|(node, _)| node.get_text() == clean_name)
+                                .collect();
+                        }
+
+                        if matched.is_empty() {
+                            warn!("  LLM signal '{}' not found in dataflow", clean_name);
+                        } else {
+                            warn!("  matched {} node(s) for '{}'", matched.len(), clean_name);
+                        }
+
+                        selected_nodes.extend(
+                            matched.into_iter().map(|(n, t)| ((*n).clone(), (*t).clone()))
+                        );
                     }
                 }
+
+                if selected_nodes.is_empty() {
+                    // LLM provided no usable signals → fallback to all dataflow signals
+                    let fallback: Vec<_> = input_var_nodes_with_t
+                        .iter()
+                        .map(|(n, t)| ((*n).clone(), (*t).clone()))
+                        .collect();
+                    warn!("LLM check_signals matched nothing, falling back to all {} dataflow signals", fallback.len());
+                    if fallback.is_empty() {
+                        return Ok((None, suspicious, terminate));
+                    }
+                    return Ok((Some(fallback), suspicious, terminate));
+                }
+
+                // Deduplicate
+                let mut seen = std::collections::HashSet::new();
+                let selected_nodes: Vec<_> = selected_nodes
+                    .into_iter()
+                    .filter(|(n, t)| seen.insert((n.get_text().to_string(), *t)))
+                    .collect();
+                warn!("LLM selected {} unique signal(s) for upstream tracing", selected_nodes.len());
+                return Ok((Some(selected_nodes), suspicious, terminate));
             }
         }
         Err(anyhow!(

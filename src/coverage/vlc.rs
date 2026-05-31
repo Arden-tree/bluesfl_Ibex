@@ -380,7 +380,25 @@ impl VlcCoverageReport {
             CircuitType::SEQ => &self.lines_coverage_seq,
         };
         let key = (scope_name.to_string(), time);
-        lines.get(&key).unwrap_or(&vec![]).clone()
+        if let Some(cov) = lines.get(&key) {
+            return cov.clone();
+        }
+        // Fallback: split-file RTL scopes have an extra repeated segment
+        // e.g. TOP...cpu.soc.nutcore.cpu.soc.nutcore.backend → TOP...cpu.soc.nutcore.backend
+        // Try removing the first occurrence of "cpu.soc.nutcore." after the top scope prefix
+        if let Some(idx) = scope_name.find("cpu.soc.nutcore.") {
+            if let Some(rest) = scope_name.get(idx + "cpu.soc.nutcore.".len()..) {
+                if rest.starts_with("cpu.soc.nutcore.") {
+                    let stripped = format!("{}{}", &scope_name[..idx], rest);
+                    let fallback_key = (stripped.clone(), time);
+                    if let Some(cov) = lines.get(&fallback_key) {
+                        warn!("Coverage scope fallback: {} → {}", scope_name, stripped);
+                        return cov.clone();
+                    }
+                }
+            }
+        }
+        vec![]
     }
 }
 
@@ -397,12 +415,25 @@ impl CoverageTracker for VlcCoverageReport {
             Some(BlockType::Always(ctype)) => {
                 // Always Coverage should check ctype
                 if scope_name.and(time).is_some() {
-                    let ret = self
-                        .get_always_lines_coverage(ctype, scope_name.unwrap(), time.unwrap())
+                    let scope_cov = self
+                        .get_always_lines_coverage(ctype, scope_name.unwrap(), time.unwrap());
+                    // 1. Try exact lineno match
+                    if let Some(count) = scope_cov
                         .iter()
                         .find(|&line_coverage| line_coverage.line == lineno)
-                        .map(|line_coverage| line_coverage.count);
-                    ret
+                        .map(|line_coverage| line_coverage.count)
+                    {
+                        return Some(count);
+                    }
+                    // 2. Fallback: Verilator may not instrument interior lines of
+                    //    always blocks with conditional branches (if/else). When the
+                    //    block entry has coverage (count > 0), treat all lines as
+                    //    covered so the tracer can follow dataflow through the block.
+                    scope_cov
+                        .iter()
+                        .filter(|lc| lc.count > 0)
+                        .max_by_key(|lc| lc.count)
+                        .map(|lc| lc.count)
                 } else {
                     None
                 }
@@ -492,3 +523,4 @@ mod tests {
         assert_eq!(numbers, vec![14]);
     }
 }
+

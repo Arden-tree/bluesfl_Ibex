@@ -222,6 +222,37 @@ where
             }
         };
 
+        // Fallback for Always(SEQ): when coverage data is missing, pipeline
+        // registers still have deterministic dataflow (reg <= wire).
+        // Ignore coverage and do a pure dataflow lookup.
+        let vars = if vars.is_none() && matches!(btype, BlockType::Always(CircuitType::SEQ)) {
+            let direct_deps: Vec<NodeID> = block
+                .get_output_nodes()
+                .into_iter()
+                .filter(|node| node.get_text() == sig.get_text())
+                .flat_map(|node| block.get_node_dataflow(node.clone()).into_iter())
+                .filter(|node| matches!(node, NodeID::Identifier(_, _)))
+                .collect();
+            if direct_deps.is_empty() {
+                warn!("SEQ fallback: no dataflow deps for sig='{}'", sig.get_text());
+                None
+            } else {
+                // Filter out valid/ready control signals — they cause tracing to diverge
+                // to unrelated modules. Pipeline registers should trace data, not control.
+                let filtered: Vec<NodeID> = direct_deps.iter().filter(|dep| {
+                    let t = dep.get_text();
+                    !t.ends_with("_valid") && !t.ends_with("_ready") && t != "valid" && t != "ready"
+                }).cloned().collect();
+                let chosen = if filtered.is_empty() { direct_deps.clone() } else { filtered };
+                warn!("SEQ fallback: found {} deps for sig='{}', selected {}: {:?}",
+                    direct_deps.len(), sig.get_text(), chosen.len(),
+                    chosen.iter().map(|n| n.get_text()).collect::<Vec<_>>());
+                Some(chosen)
+            }
+        } else {
+            vars
+        };
+
         (next_time, vars)
     }
 }

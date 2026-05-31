@@ -40,9 +40,9 @@ pub fn get_agent_builder<'a>(
                 env::var("API_BASE").unwrap_or("https://api.openai.com/v1".to_string());
             let openai_key = env::var("API_KEY").expect("Please set API_KEY");
             let http_client = reqwest::Client::builder()
-                .connect_timeout(std::time::Duration::from_secs(30))
-                .timeout(std::time::Duration::from_secs(300))
-                .tcp_keepalive(std::time::Duration::from_secs(30))
+                .connect_timeout(std::time::Duration::from_secs(60))
+                .timeout(std::time::Duration::from_secs(600))
+                .tcp_keepalive(std::time::Duration::from_secs(60))
                 .build()
                 .unwrap();
             let client = openai::Client::builder(&openai_key)
@@ -96,6 +96,7 @@ fn parse_module<'a, P: AsRef<Path>>(
     top_module: &str,
     top_scope: &str,
     param_coverage_tracker: Option<ParameterCoverageReport>,
+    signal_map: Option<HashMap<String, HashMap<String, String>>>,
 ) -> BlockManager<'a, DataFlowBlockParser> {
     let defines = vec![("RVFI".to_string(), None)]
         .into_iter()
@@ -108,6 +109,9 @@ fn parse_module<'a, P: AsRef<Path>>(
     let mut parser_builder = DataFlowBlockParserBuilder::default();
     if let Some(param_coverage_report) = param_coverage_tracker {
         parser_builder.param_coverage_tracker(param_coverage_report);
+    }
+    if let Some(signal_map) = signal_map {
+        parser_builder.signal_map(signal_map);
     }
     let parser = parser_builder.build().unwrap();
     let mod_files = mod_path;
@@ -190,7 +194,30 @@ pub fn setup_block_mgr<'a, P: AsRef<Path>, CT: CoverageTracker>(
             .collect::<Vec<_>>()
     };
     let includes = includes.iter().map(|p| p).collect::<Vec<_>>();
-    let block_manager = parse_module(&mod_path, &includes, top_module, top_scope, param_tracker);
+    // Load signal name map if available
+    let signal_map: Option<HashMap<String, HashMap<String, String>>> = {
+        let sv_home = env::var("SV_ANALYSIS_HOME").unwrap_or_else(|_| ".".to_string());
+        let map_path = format!("{}/signal_name_map.json", sv_home);
+        if Path::new(&map_path).exists() {
+            let content = fs::read_to_string(&map_path).ok();
+            content.and_then(|c| {
+                let v: serde_json::Value = serde_json::from_str(&c).ok()?;
+                let modules = v.get("modules")?;
+                let mut map = HashMap::new();
+                for (mod_name, ports) in modules.as_object()? {
+                    let mut port_map = HashMap::new();
+                    for (port_name, canonical) in ports.as_object()? {
+                        port_map.insert(port_name.clone(), canonical.as_str()?.to_string());
+                    }
+                    map.insert(mod_name.clone(), port_map);
+                }
+                Some(map)
+            })
+        } else {
+            None
+        }
+    };
+    let block_manager = parse_module(&mod_path, &includes, top_module, top_scope, param_tracker, signal_map);
     block_manager
 }
 

@@ -18,11 +18,12 @@ pub enum CircuitType {
 
 impl From<AlwaysConstruct> for CircuitType {
     fn from(always: AlwaysConstruct) -> Self {
-        // FIXME: too simple
         match always.nodes.0 {
-            AlwaysKeyword::Always(_) => CircuitType::COMB,
             AlwaysKeyword::AlwaysComb(_) => CircuitType::COMB,
-            _ => CircuitType::SEQ,
+            AlwaysKeyword::AlwaysFf(_) | AlwaysKeyword::AlwaysLatch(_) => CircuitType::SEQ,
+            // Plain `always` — in synthesized Chisel/RTL code, `always @(posedge clk)`
+            // is sequential. Default to SEQ since most plain `always` blocks are clocked.
+            AlwaysKeyword::Always(_) => CircuitType::SEQ,
         }
     }
 }

@@ -183,7 +183,6 @@ where
     BC: BlockChecker<'a, Parser::Block<'a>> + Send + 'static,
     BR: BlockReranker<'a, Parser::Block<'a>> + Send + 'static,
 {
-    #[allow(unused)]
     async fn llm_voting_for_ports(
         &self,
         block: &T,
@@ -401,7 +400,6 @@ where
         suspicious_vars
     }
 
-    #[allow(unused)]
     async fn llm_request_for_ports(
         &mut self,
         cur_scope: &str,
@@ -714,53 +712,60 @@ where
         // Note the sig is an extern variable, so first map sig to local_sig
 
         match block.get_block_type() {
-            // BlockType::ModuleOutput => {
-            //     trace!("module_checker start for module: {}, sig={}, time={:?}", block.get_module_name(), sig.get_text(), time);
-            //     let local_sigs = block
-            //         .get_output_nodes()
-            //         .into_iter()
-            //         .filter(|&node| node.get_text() == sig.get_text())
-            //         // use dataflow, map output wire signal to local module port node
-            //         .map(|node| block.get_node_dataflow(node.clone()))
-            //         .flatten()
-            //         .collect::<Vec<_>>();
-            //     assert_eq!(local_sigs.len(), 1);
-            //     let local_sig = &local_sigs[0];
-            //     // determine whether dive into
-            //     // [input]
-            //     // 1. module header code
-            //     // 2. sig signal values @ T
-            //     // 3. input ports signal values @ T-1
-            //     // 4. instruction info + module knowledge
-            //     // [output]
-            //     // if the input values are incorrect, we will not dive into this module instead go to input ports@t-1
-            //     // otherwise, check this module
-            //     let local_trace = self.get_local_trace(block, local_sig, time).await;
-            //     let port_blocks = self.filter_input_ports_from_trace(cur_scope, &local_trace);
-            //     if port_blocks.is_empty() {
-            //         // maybe this output port is assigned by a constant.
-            //         warn!(
-            //             "No port blocks found for scope {}, block bid={}, block type={}",
-            //             cur_scope, block.get_bid(), block.get_block_type()
-            //         );
-            //     }
-            //     let local_trace = local_trace
-            //         .into_iter()
-            //         .map(|(block, time)| (block, time.unwrap()))
-            //         .collect();
-            //     let ret = self.llm_request_for_ports(
-            //         cur_scope,
-            //         block,
-            //         &port_blocks,
-            //         sig,
-            //         local_sig,
-            //         time,
-            //         local_trace,
-            //     )
-            //         .await;
-            //     info!("LLM's mod_checker decision for [sig={}, module={}, time={:?}] is {:?}", sig.get_text(), block.get_module_name(), time, ret);
-            //     ret
-            // }
+            BlockType::ModuleOutput => {
+                trace!("module_checker start for module: {}, sig={}, time={:?}", block.get_module_name(), sig.get_text(), time);
+                // Try output_nodes first (parent-side name → dataflow maps to child port)
+                let local_sigs: Vec<NodeID> = block
+                    .get_output_nodes()
+                    .into_iter()
+                    .filter(|&node| node.get_text() == sig.get_text())
+                    .flat_map(|node| block.get_node_dataflow(node.clone()))
+                    .collect();
+                let local_sig = if !local_sigs.is_empty() {
+                    local_sigs[0].clone()
+                } else {
+                    // sig matched on input_nodes (child port name) — sig IS the local port
+                    let input_match = block.get_input_nodes()
+                        .into_iter()
+                        .any(|node| node.get_text() == sig.get_text());
+                    if input_match {
+                        sig.clone()
+                    } else {
+                        warn!(
+                            "ModuleChecker: no local_sig for output sig='{}' in module={}, fallback to dataflow",
+                            sig.get_text(), block.get_module_name()
+                        );
+                        return self.dynamic_tracer
+                            .get_driven_signals_fixpoint(block, cur_scope, time, sig)
+                            .await;
+                    }
+                };
+                let local_trace = self.get_local_trace(block, &local_sig, time).await;
+                let port_blocks = self.filter_input_ports_from_trace(cur_scope, &local_trace);
+                if port_blocks.is_empty() {
+                    // maybe this output port is assigned by a constant.
+                    warn!(
+                        "No port blocks found for scope {}, block bid={}, block type={}",
+                        cur_scope, block.get_bid(), block.get_block_type()
+                    );
+                }
+                let local_trace = local_trace
+                    .into_iter()
+                    .map(|(block, time)| (block, time.unwrap()))
+                    .collect();
+                let ret = self.llm_request_for_ports(
+                    cur_scope,
+                    block,
+                    &port_blocks,
+                    sig,
+                    &local_sig,
+                    time,
+                    local_trace,
+                )
+                    .await;
+                info!("LLM's mod_checker decision for [sig={}, module={}, time={:?}] is {:?}", sig.get_text(), block.get_module_name(), time, ret);
+                ret
+            }
             BlockType::Assign | BlockType::Always(_)
             // Add guard, block checker only enabled when mod_checker mark the bid in set.
             // if {
@@ -801,6 +806,7 @@ where
                         .into_iter().filter(|(var, _)| !var.get_text().chars().filter(|c| c.is_alphabetic()).all(|c| c.is_uppercase()))
                         .collect::<Vec<_>>();
                     warn!("LLM: sig_dataflow_vars count={}", sig_dataflow_vars.len());
+                    warn!("LLM: sig_dataflow_vars names={:?}", sig_dataflow_vars.iter().map(|(n, t)| (n.get_text(), t)).collect::<Vec<_>>());
 
                     let local_trace = self.get_local_trace(block, sig, time).await;
                     warn!("LLM: local_trace len={}", local_trace.len());
