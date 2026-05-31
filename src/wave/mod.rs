@@ -47,19 +47,18 @@ fn collect_scopes_recursive(
     path.pop();
 }
 
-/// Given an sv-parser scope (as Vec<&str>), find the matching FST scope path
-/// by longest-suffix matching against the scope index.
-fn map_scope(
+/// Given an sv-parser scope (as Vec<&str>), find all matching FST scope paths
+/// sorted by longest-suffix match length (descending).
+/// Returns candidates for caller to verify signal existence.
+fn map_scope_candidates(
     sv_scope: &[&str],
     scope_index: &[(Vec<String>, Vec<String>)],
-) -> Option<Vec<String>> {
+) -> Vec<(usize, Vec<String>)> {
     let sv_rev: Vec<&str> = sv_scope.iter().rev().cloned().collect();
 
-    // Find the FST scope whose reversed path has the longest common prefix with sv_rev
-    let mut best_match: Option<(usize, &Vec<String>)> = None;
+    let mut candidates: Vec<(usize, Vec<String>)> = Vec::new();
 
     for (fst_rev, fst_fwd) in scope_index {
-        // Count how many components match from the end
         let common_len = sv_rev
             .iter()
             .zip(fst_rev.iter())
@@ -67,14 +66,13 @@ fn map_scope(
             .count();
 
         if common_len > 0 {
-            match best_match {
-                Some((best_len, _)) if common_len <= best_len => {}
-                _ => best_match = Some((common_len, fst_fwd)),
-            }
+            candidates.push((common_len, fst_fwd.clone()));
         }
     }
 
-    best_match.map(|(_, fwd)| fwd.clone())
+    // Sort by match length descending (best first)
+    candidates.sort_by(|a, b| b.0.cmp(&a.0));
+    candidates
 }
 
 /// Represents a signal value that may be in raw form or translated through an enum mapping
@@ -158,19 +156,26 @@ impl WaveInspector {
             return Some(Self::make_var_info(hierarchy, var_id, time, var_str));
         }
 
-        // 2. Map scope via suffix matching against FST hierarchy
-        if let Some(mapped_scope) = map_scope(&scope_vec, scope_index) {
-            if let Some(var_id) = hierarchy.lookup_var(&mapped_scope, &var_str.to_string()) {
+        // 2. Map scope via suffix matching, verify signal existence for each candidate
+        let candidates = map_scope_candidates(&scope_vec, scope_index);
+        for (match_len, mapped_scope) in &candidates {
+            if let Some(var_id) = hierarchy.lookup_var(&mapped_scope[..], &var_str.to_string()) {
+                log::info!(
+                    "Scope mapped (match={}/{}): {:?} -> {:?}, signal '{}' found",
+                    match_len, scope_vec.len(), scope_vec, mapped_scope, var_str
+                );
                 return Some(Self::make_var_info(hierarchy, var_id, time, var_str));
             }
         }
 
-        // 3. Try array scope (exact + mapped)
-        let mut candidates: Vec<Vec<String>> = vec![scope_vec.iter().map(|s| s.to_string()).collect()];
-        if let Some(mapped) = map_scope(&scope_vec, scope_index) {
-            candidates.push(mapped);
+        // 3. Try array scope (exact + best mapped candidate)
+        let mut scope_candidates: Vec<Vec<String>> = vec![
+            scope_vec.iter().map(|s| s.to_string()).collect()
+        ];
+        if let Some((_, best)) = candidates.first() {
+            scope_candidates.push(best.clone());
         }
-        for scope_path in candidates {
+        for scope_path in scope_candidates {
             let mut array_scope: Vec<String> = scope_path.clone();
             array_scope.push(var_str.to_string());
             if let Some(scope_ref) = hierarchy.lookup_scope(&array_scope) {

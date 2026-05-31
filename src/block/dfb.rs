@@ -2,6 +2,7 @@ use crate::block::utils::{
     get_dut_name_from_instantiation, get_identifier_str, get_module_name_from_instantiation,
     get_port_connections, get_port_direction, get_ref_node_code_str, merge_all,
 };
+use crate::utils::extract_signal_suffix;
 use crate::block::{
     AstRange, Block, BlockParser, BlockType, CircuitType, CoverState, ScopeBlocks, SuspiciousTrace,
 };
@@ -130,12 +131,41 @@ impl DataFlowBlock {
     }
 }
 
+/// Signal name canonical mapping: module_name -> {port_name -> canonical_name}
+type SignalNameMap = HashMap<String, HashMap<String, String>>;
+
 #[derive(Builder)]
 pub struct DataFlowBlockParser {
     #[builder(default)]
     max_bid: Cell<u64>,
     #[builder(setter(into, strip_option), default)]
     param_coverage_tracker: Option<ParameterCoverageReport>,
+    /// Signal name canonical mapping loaded from signal_name_map.json
+    #[builder(setter(into, strip_option), default)]
+    signal_map: Option<SignalNameMap>,
+}
+
+impl DataFlowBlockParser {
+    /// Canonicalize a signal name for matching across module boundaries.
+    /// First tries the signal_map JSON, then falls back to suffix extraction.
+    pub fn canonicalize_signal(&self, module_name: &str, signal_name: &str) -> String {
+        // Try signal_map first
+        if let Some(map) = &self.signal_map {
+            if let Some(module_map) = map.get(module_name) {
+                if let Some(canonical) = module_map.get(signal_name) {
+                    return canonical.to_string();
+                }
+            }
+            // Also try without module name (global match)
+            for (_mod, module_map) in map {
+                if let Some(canonical) = module_map.get(signal_name) {
+                    return canonical.to_string();
+                }
+            }
+        }
+        // Fallback: use suffix extraction
+        extract_signal_suffix(signal_name).to_string()
+    }
 }
 
 fn merge_two(
@@ -263,11 +293,21 @@ impl BlockParser for DataFlowBlockParser {
                 // we need to refactor ModuleInput construction, each block contains only one port.
                 // Module block only contain 1 input var and 1 outpu var.
                 if matches!(block.get_block_type(), BlockType::ModuleInput) {
+                    // Try exact match first
                     let port_connections = last_port_connections.iter().find(|(port, _)| {
                         block
                             .outputs
                             .iter()
                             .any(|n| n.get_text() == port.get_text())
+                    }).or_else(|| {
+                        // Canonical/suffix fallback: match using canonicalized signal names
+                        last_port_connections.iter().find(|(port, _)| {
+                            let canonical_port = self.canonicalize_signal(&block.module_name, port.get_text());
+                            canonical_port.len() >= 4 && block.outputs.iter().any(|n| {
+                                let canonical_node = self.canonicalize_signal(&block.module_name, n.get_text());
+                                canonical_node == canonical_port || n.get_text().ends_with(&canonical_port)
+                            })
+                        })
                     });
                     if let Some((port, vars)) = port_connections {
                         vars.iter().for_each(|s| {
@@ -280,8 +320,18 @@ impl BlockParser for DataFlowBlockParser {
                         });
                     }
                 } else if matches!(block.get_block_type(), BlockType::ModuleOutput) {
+                    // Try exact match first
                     let port_connections = last_port_connections.iter().find(|(port, _)| {
                         block.inputs.iter().any(|n| n.get_text() == port.get_text())
+                    }).or_else(|| {
+                        // Canonical/suffix fallback: match using canonicalized signal names
+                        last_port_connections.iter().find(|(port, _)| {
+                            let canonical_port = self.canonicalize_signal(&block.module_name, port.get_text());
+                            canonical_port.len() >= 4 && block.inputs.iter().any(|n| {
+                                let canonical_node = self.canonicalize_signal(&block.module_name, n.get_text());
+                                canonical_node == canonical_port || n.get_text().ends_with(&canonical_port)
+                            })
+                        })
                     });
                     if let Some((port, vars)) = port_connections {
                         vars.iter().for_each(|s| {
@@ -297,6 +347,32 @@ impl BlockParser for DataFlowBlockParser {
                 res.push(block);
             }
         }
+
+        // Validate port direction assignment for CIRCT multi-port declarations.
+        // If a ModuleInput/ModuleOutput block has no port_connections mapping,
+        // the direction might have been inherited incorrectly from last_port_direction.
+        if !last_port_connections.is_empty() {
+            for block in &res {
+                let port_name = match block.get_block_type() {
+                    BlockType::ModuleInput => block.outputs.iter().next(),
+                    BlockType::ModuleOutput => block.inputs.iter().next(),
+                    _ => continue,
+                };
+                if let Some(port) = port_name {
+                    let has_mapping = last_port_connections.keys()
+                        .any(|key| key.get_text() == port.get_text());
+                    if !has_mapping {
+                        warn!(
+                            "Port direction suspect: {:?} block bid={} port='{}' module={} scope={} \
+                             has no port_connections mapping. Direction may be wrong.",
+                            block.get_block_type(), block.get_bid(), port.get_text(),
+                            block.get_module_name(), block.get_scope()
+                        );
+                    }
+                }
+            }
+        }
+
         let merged = merge_all(res, merge_two);
         merged
     }
@@ -406,6 +482,17 @@ impl BlockParser for DataFlowBlockParser {
                 // Chisel-generated Verilog uses these heavily instead of separate `assign`.
                 if let Some(block) = self.new_wire_assign_block(tree, module_name, scope, net_decl) {
                     return Some(block);
+                }
+                // Fallback: if NetDeclaration has an initializer but we couldn't parse it,
+                // warn so the user knows a wire assign block is missing from tracing.
+                let has_init = RefNode::NetDeclaration(net_decl).into_iter()
+                    .any(|child| matches!(child, RefNode::NetDeclAssignment(_)));
+                if has_init {
+                    warn!(
+                        "NetDeclaration with initializer in module {} at scope {} \
+                         could not be parsed as AssignBlock. This wire will be missing from tracing.",
+                        module_name, scope
+                    );
                 }
             }
             _ => {}
