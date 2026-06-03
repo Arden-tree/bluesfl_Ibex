@@ -1,0 +1,6 @@
+{
+  "module_name": "ISU",
+  "scope_name": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.backend.seq.ISU",
+  "description": "ALU-ALU forwarding disabled",
+  "bug_file": "src/main/scala/nutcore/backend/seq/ISU.scala"
+}

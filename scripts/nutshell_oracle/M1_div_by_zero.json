@@ -1,0 +1,6 @@
+{
+  "module_name": "MDU",
+  "scope_name": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.backend.exu.mdu",
+  "description": "DIV/REM divide-by-zero semantics error",
+  "bug_file": "src/main/scala/nutcore/backend/fu/MDU.scala"
+}

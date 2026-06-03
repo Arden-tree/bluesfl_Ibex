@@ -1,0 +1,53 @@
+emu compiled at May 31 2026, 17:49:24
+Using simulated 32768B flash
+dump wave to /dev/null...
+Using simulated 8192MB RAM
+The image is /tmp/U6_test.bin
+The reference model (dynamically or statically linked at compile-time) is /home/yuan/nutshell-sbfl/build/riscv64-nemu-interpreter-so
+The first instruction of core 0 has commited. Difftest enabled. 
+nemu does not enable flash fetch!
+[00] commit pc 0000000080000000 inst 00000097 wen 1 dst 01 data 0000000080000000 idx 000
+[01] commit pc 0000000080000004 inst 01008093 wen 1 dst 01 data 0000000080000010 idx 000
+[02] commit pc 0000000080000008 inst 0010e093 wen 1 dst 01 data 0000000080000011 idx 000
+[03] commit pc 000000008000000c inst 00008067 wen 0 dst 00 data 0000000080000011 idx 000
+No instruction of core 0 commits for 1000 cycles, maybe get stuck
+(please also check whether a fence.i instruction requires more than 1000 cycles to flush the icache)
+Let REF run one more instruction.
+
+============== Commit Group Trace (Core 0) ==============
+commit group [00]: pc 0080000000 cmtcnt 1
+commit group [01]: pc 0080000004 cmtcnt 1
+commit group [02]: pc 0080000008 cmtcnt 1
+commit group [03]: pc 008000000c cmtcnt 1 <--
+
+============== Commit Instr Trace ==============
+[00] commit pc 0000000080000000 inst 00000097 wen 1 dst 01 data 0000000080000000 idx 000
+[01] commit pc 0000000080000004 inst 01008093 wen 1 dst 01 data 0000000080000010 idx 000
+[02] commit pc 0000000080000008 inst 0010e093 wen 1 dst 01 data 0000000080000011 idx 000
+[03] commit pc 000000008000000c inst 00008067 wen 0 dst 00 data 0000000080000011 idx 000 <--
+
+==============  REF Regs  ==============
+  $0: 0x0000000000000000   ra: 0x0000000080000011   sp: 0x82499f086ea82a21   gp: 0x7c833c996a5f4e41 
+  tp: 0xdebd663bb369a6f5   t0: 0x5af8683066298d8c   t1: 0x291fc5ec0ad62b64   t2: 0xd60aa91fb14a7365 
+  s0: 0xd88adddfd79df695   s1: 0xa8450f396850718c   a0: 0xe7884897baad485f   a1: 0xe25eb27b1716d34b 
+  a2: 0x2ad463310aeb8a48   a3: 0x5f8ab3b008f6f52d   a4: 0xf5aa0583f1cdc664   a5: 0x181e34e6279f1ac2 
+  a6: 0xf21109ec442d1ed7   a7: 0x0007f62b71cecb15   s2: 0x20ee59103204d24a   s3: 0x1fa5878e8ad75e9a 
+  s4: 0x4c94f763cd234964   s5: 0xaa7fad578650778b   s6: 0x4800109244b75424   s7: 0x14b807bfbd0a77ac 
+  s8: 0x3a61dc8e5b6255d8   s9: 0xb2046810939611a8  s10: 0x2423ea0e98405087  s11: 0xbb2abaf81f606d62 
+  t3: 0x97c083f7f4397b4f   t4: 0xc1e011909643223f   t5: 0xeeb6d306eca7e2c2   t6: 0x622abbad93fc361a 
+pc: 0x0000000080000012 mstatus: 0x0000000a00001800 mcause: 0x0000000000000000 mepc: 0x0000000000000000
+                       sstatus: 0x0000000200000000 scause: 0x0000000000000000 sepc: 0x0000000000000000
+satp: 0x0000000000000000
+mip: 0x0000000000000000 mie: 0x0000000000000000 mscratch: 0x0000000000000000 sscratch: 0x0000000000000000
+mideleg: 0x0000000000000000 medeleg: 0x0000000000000000
+mtval: 0x0000000000000000 stval: 0xffffffdefb0cd10c mtvec: 0x0000000000000000 stvec: 0x0000000000000000
+privilege mode:3  pmp: below
+ 0: cfg:0x00 addr:0x0000000000000000| 1: cfg:0x00 addr:0x0000000000000000
+ 2: cfg:0x00 addr:0x0000000000000000| 3: cfg:0x00 addr:0x0000000000000000
+pmp csr rw: enable, pmp check: disable
+privilegeMode: 3
+Core 0: [31mABORT at pc = 0x80000012
+[0m[35mCore-0 instrCnt = 4, cycleCnt = 1,536, IPC = 0.002604
+[0m[34mSeed=0 Guest cycle spent: 1,537 (this will be different from cycleCnt if emu loads a snapshot)
+[0m[34mHost time spent: 65ms
+[0m

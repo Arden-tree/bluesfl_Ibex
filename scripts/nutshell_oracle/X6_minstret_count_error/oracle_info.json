@@ -1,0 +1,6 @@
+{
+  "module_name": "CSR",
+  "scope_name": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.backend.fu.CSR",
+  "description": "minstret count error for certain instructions",
+  "bug_file": "src/main/scala/nutcore/backend/fu/CSR.scala"
+}

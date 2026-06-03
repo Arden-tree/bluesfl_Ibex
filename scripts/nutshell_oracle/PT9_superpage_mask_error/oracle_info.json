@@ -1,0 +1,6 @@
+{
+  "module_name": "EmbeddedTLB",
+  "scope_name": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.mem.EmbeddedTLB",
+  "description": "Superpage alignment mask error",
+  "bug_file": "src/main/scala/nutcore/mem/EmbeddedTLB.scala"
+}

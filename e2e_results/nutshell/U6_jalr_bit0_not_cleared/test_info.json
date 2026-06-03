@@ -1,0 +1,83 @@
+{
+  "bug_id": "U6_jalr_bit0_not_cleared",
+  "start_scope": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.backend",
+  "start_sig": "io_redirect_target",
+  "start_time": 515,
+  "start_time_probed": false,
+  "test_info": "ABORT at pc=0x80000012 after 4 instructions, last commit pc=0x8000000c inst=0x00008067",
+  "time_bound": 485,
+  "time_step": 2,
+  "top_module": "SimTop",
+  "top_scope": "TOP.SimTop.cpu.soc.nutcore",
+  "emu_abort_pc": 2147483666,
+  "emu_instr_cnt": 4,
+  "emu_cycle_cnt": 1536,
+  "emu_guest_cycle": 1537,
+  "commit_instrs": [
+    {
+      "idx": 0,
+      "pc": 2147483648,
+      "inst": 151,
+      "wen": 1,
+      "dst": 1,
+      "data": 2147483648
+    },
+    {
+      "idx": 1,
+      "pc": 2147483652,
+      "inst": 16810131,
+      "wen": 1,
+      "dst": 1,
+      "data": 2147483664
+    },
+    {
+      "idx": 2,
+      "pc": 2147483656,
+      "inst": 1106067,
+      "wen": 1,
+      "dst": 1,
+      "data": 2147483665
+    },
+    {
+      "idx": 3,
+      "pc": 2147483660,
+      "inst": 32871,
+      "wen": 0,
+      "dst": 0,
+      "data": 2147483665
+    },
+    {
+      "idx": 0,
+      "pc": 2147483648,
+      "inst": 151,
+      "wen": 1,
+      "dst": 1,
+      "data": 2147483648
+    },
+    {
+      "idx": 1,
+      "pc": 2147483652,
+      "inst": 16810131,
+      "wen": 1,
+      "dst": 1,
+      "data": 2147483664
+    },
+    {
+      "idx": 2,
+      "pc": 2147483656,
+      "inst": 1106067,
+      "wen": 1,
+      "dst": 1,
+      "data": 2147483665
+    },
+    {
+      "idx": 3,
+      "pc": 2147483660,
+      "inst": 32871,
+      "wen": 0,
+      "dst": 0,
+      "data": 2147483665
+    }
+  ],
+  "mismatch_fields": []
+}

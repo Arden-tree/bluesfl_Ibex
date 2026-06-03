@@ -1,0 +1,6 @@
+{
+  "module_name": "RVI",
+  "scope_name": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.isa.RVI",
+  "description": "SUB/SRA decode confusion",
+  "bug_file": "src/main/scala/nutcore/isa/RVI.scala"
+}

@@ -310,35 +310,47 @@ where
         .into_iter()
         .map(|p| p.as_ref().to_path_buf())
         .collect::<Vec<_>>();
-    let syntax_trees = mod_files
+    // Single pass: parse each file once and collect both syntax trees and source code
+    let parse_start = std::time::Instant::now();
+    eprintln!("[PERF] Starting parse_sv for {} files...", mod_files.len());
+    let parsed = mod_files
         .par_iter()
         .filter_map(|path| {
-            let (tree, _) = parse_sv(path, defines, includes, false, false)
-                .expect(format!("Failed to parse {:?}", path).as_str());
-            let module_name = get_module_name(&tree);
-            if let Some(module_name) = module_name {
-                Some((module_name, SendSyntaxTree(tree)))
-            } else {
-                None
+            let file_parse_start = std::time::Instant::now();
+            let result = parse_sv(path, defines, includes, false, false);
+            let file_parse_elapsed = file_parse_start.elapsed();
+            match result {
+                Ok((tree, _)) => {
+                    let module_name = get_module_name(&tree);
+                    if let Some(module_name) = module_name {
+                        eprintln!("[PERF] parse_sv {:?} OK in {:.2}s", path.file_name().unwrap(), file_parse_elapsed.as_secs_f64());
+                        let code_content = fs::read_to_string(path).ok();
+                        Some((module_name, Arc::new(tree), code_content))
+                    } else {
+                        None
+                    }
+                }
+                Err(e) => {
+                    eprintln!("[PERF] parse_sv {:?} FAILED in {:.2}s: {}", path.file_name().unwrap(), file_parse_elapsed.as_secs_f64(), e);
+                    None
+                }
             }
         })
         .collect::<Vec<_>>();
-    let mappings = syntax_trees
-        .into_iter()
-        .map(|(name, tree)| (name.clone(), Arc::new(tree.0)))
+    let mappings = parsed
+        .iter()
+        .map(|(name, tree, _)| (name.clone(), Arc::clone(tree)))
         .collect::<HashMap<_, _>>();
 
-    let file_code_mapping = mod_files
-        .par_iter()
-        .filter_map(|path| {
-            let (tree, _) = parse_sv(path, defines, includes, false, false)
-                .expect(format!("Failed to parse {:?}", path).as_str());
-            let module_name = get_module_name(&tree);
-            let code_content = fs::read_to_string(path).ok();
-            module_name.and_then(|module_name| code_content.map(|content| (module_name, content)))
-        })
+    let file_code_mapping = parsed
+        .into_iter()
+        .filter_map(|(name, _, code)| code.map(|content| (name, content)))
         .collect::<HashMap<_, _>>();
-    BlockManager::new(mappings, file_code_mapping, top_module, top_scope, parser)
+    eprintln!("[PERF] parse_sv total: {:.2}s for {} files", parse_start.elapsed().as_secs_f64(), mappings.len());
+    let block_mgr_start = std::time::Instant::now();
+    let mgr = BlockManager::new(mappings, file_code_mapping, top_module, top_scope, parser);
+    eprintln!("[PERF] BlockManager::new (dataflow analysis): {:.2}s", block_mgr_start.elapsed().as_secs_f64());
+    mgr
 }
 
 #[cfg(test)]

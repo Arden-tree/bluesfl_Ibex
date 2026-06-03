@@ -1,0 +1,6 @@
+{
+  "module_name": "EXU",
+  "scope_name": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.backend.seq.EXU",
+  "description": "Exception type or priority error",
+  "bug_file": "src/main/scala/nutcore/backend/seq/EXU.scala"
+}

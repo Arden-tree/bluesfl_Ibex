@@ -1,0 +1,6 @@
+{
+  "module_name": "UnpipelinedLSU",
+  "scope_name": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.backend.fu.UnpipelinedLSU",
+  "description": "LB/LBU sign/zero extension swapped",
+  "bug_file": "src/main/scala/nutcore/backend/fu/UnpipelinedLSU.scala"
+}

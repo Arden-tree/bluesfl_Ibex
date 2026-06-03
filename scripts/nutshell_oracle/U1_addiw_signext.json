@@ -1,0 +1,6 @@
+{
+  "module_name": "ALU",
+  "scope_name": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.backend.exu.alu",
+  "description": "ADDIW sign-extension error (zero-extend instead)",
+  "bug_file": "src/main/scala/nutcore/backend/fu/ALU.scala"
+}

@@ -1,0 +1,118 @@
+[
+  {
+    "code": [
+      "assign io_redirect_target = io_in_bits_decode_cf_redirect_target;"
+    ],
+    "node": [
+      {
+        "Identifier": [
+          {
+            "len": 18,
+            "line": 19,
+            "offset": 1637,
+            "original_line": 19
+          },
+          "io_redirect_target"
+        ]
+      },
+      533
+    ]
+  },
+  {
+    "code": [
+      "assign io_out_bits_decode_cf_redirect_target =\n    _mou_io_redirect_valid\n      ? _mou_io_redirect_target\n      : _csr_io_redirect_valid ? _csr_io_redirect_target : _alu_io_redirect_target;"
+    ],
+    "node": [
+      {
+        "Identifier": [
+          {
+            "len": 37,
+            "line": 49,
+            "offset": 4572,
+            "original_line": 49
+          },
+          "io_out_bits_decode_cf_redirect_target"
+        ]
+      },
+      531
+    ]
+  },
+  {
+    "code": [
+      "wire _adderRes_T_3 =\n    {1'h0, io_in_bits_src1} + {1'h0, io_in_bits_src2 ^ {64{~(io_in_bits_func[6])}}}\n    + {64'h0, ~(io_in_bits_func[6])};",
+      "wire slt = xorRes[63] ^ ~(_adderRes_T_3[64]);",
+      "wire xorRes = io_in_bits_src1 ^ io_in_bits_src2;",
+      "wire res =\n    io_in_bits_func[3:0] == 4'hD\n      ? $signed($signed(shsrc1) >>> _GEN)\n      : io_in_bits_func[3:0] == 4'h7\n          ? io_in_bits_src1 & io_in_bits_src2\n          : io_in_bits_func[3:0] == 4'h6\n              ? io_in_bits_src1 | io_in_bits_src2\n              : io_in_bits_func[3:0] == 4'h5\n                  ? shsrc1 >> _GEN\n                  : io_in_bits_func[3:0] == 4'h4\n                      ? xorRes\n                      : io_in_bits_func[3:0] == 4'h3\n                          ? {63'h0, ~(_adderRes_T_3[64])}\n                          : io_in_bits_func[3:0] == 4'h2\n                              ? {63'h0, slt}\n                              : io_in_bits_func[3:0] == 4'h1\n                                  ? _res_T_1[63:0]\n                                  : _adderRes_T_3[63:0];",
+      "wire shsrc1 =\n    io_in_bits_func == 7'h2D\n      ? {{32{io_in_bits_src1[31]}}, io_in_bits_src1[31:0]}\n      : io_in_bits_func == 7'h25 ? {32'h0, io_in_bits_src1[31:0]} : io_in_bits_src1;",
+      "wire _res_T_1 = {63'h0, shsrc1} << shamt;",
+      "wire shamt =\n    io_in_bits_func[5] ? {1'h0, io_in_bits_src2[4:0]} : io_in_bits_src2[5:0];",
+      "wire _GEN = {58'h0, shamt};",
+      "wire taken =\n    (io_in_bits_func[2:1] == 2'h0 & xorRes == 64'h0 | io_in_bits_func[2:1] == 2'h2 & slt\n     | (&(io_in_bits_func[2:1])) & ~(_adderRes_T_3[64])) ^ io_in_bits_func[0];",
+      "wire _GEN_0 = taken | io_in_bits_func[3];",
+      "wire _target_T_2 =\n    io_in_bits_func[3] ? _adderRes_T_3[38:0] : io_cfIn_pc + io_offset[38:0];",
+      "assign io_redirect_target_0 =\n    _GEN_0\n      ? _target_T_2\n      : (&(io_cfIn_instr[1:0])) ? io_cfIn_pc + 39'h4 : io_cfIn_pc + 39'h2;",
+      "wire predictWrong =\n    _GEN_0\n      ? ~(io_cfIn_brIdx[0]) | io_redirect_target_0 != io_cfIn_pnpc\n      : io_cfIn_brIdx[0];",
+      "wire right = bpuUpdateReq_valid & ~predictWrong;",
+      "wire bpuUpdateReq_valid = io_in_valid & io_in_bits_func[4];",
+      "wire wrong = bpuUpdateReq_valid & predictWrong;",
+      "wire _bpuUpdateReq_btbType_T_18 = io_in_bits_func == 7'h58;",
+      "wire _GEN_15 = _bpuUpdateReq_btbType_T_18 | _bpuUpdateReq_btbType_T_25;",
+      "wire _bpuUpdateReq_btbType_T_25 = io_in_bits_func == 7'h5C;",
+      "wire _GEN_16 = right & _GEN_15;",
+      "assign _WIRE_10__bore = _GEN_16;",
+      "wire _GEN_17 = wrong & _GEN_15;",
+      "assign _WIRE_11__bore = _GEN_17;",
+      "wire _bpuUpdateReq_btbType_T_9 = io_in_bits_func == 7'h5A;",
+      "wire _GEN_18 = right & _bpuUpdateReq_btbType_T_9;",
+      "wire _GEN_19 = wrong & _bpuUpdateReq_btbType_T_9;",
+      "assign _WIRE_13__bore = _GEN_19;",
+      "assign _WIRE_12__bore = _GEN_18;",
+      "wire _bpuUpdateReq_btbType_T_7 = io_in_bits_func == 7'h5E;",
+      "wire _GEN_20 = right & _bpuUpdateReq_btbType_T_7;",
+      "wire _GEN_21 = wrong & _bpuUpdateReq_btbType_T_7;",
+      "assign _WIRE_15__bore = _GEN_21;",
+      "assign _WIRE_14__bore = _GEN_20;",
+      "wire _GEN_1 = right & ~(io_in_bits_func[3]);",
+      "assign _WIRE__bore = _GEN_1;",
+      "wire _GEN_2 = wrong & ~(io_in_bits_func[3]);",
+      "wire _GEN_3 = _GEN_2 & io_cfIn_pc[2:0] == 3'h0;",
+      "wire _GEN_4 = _GEN_3 & ~(&(io_cfIn_instr[1:0]));",
+      "assign _WIRE_2__bore = _GEN_4;",
+      "wire _GEN_5 = _GEN_3 & (&(io_cfIn_instr[1:0]));",
+      "assign _WIRE_3__bore = _GEN_5;",
+      "wire _GEN_6 = _GEN_2 & io_cfIn_pc[2:0] == 3'h2;",
+      "wire _GEN_7 = _GEN_6 & ~(&(io_cfIn_instr[1:0]));",
+      "wire _GEN_8 = _GEN_6 & (&(io_cfIn_instr[1:0]));",
+      "assign _WIRE_5__bore = _GEN_8;",
+      "assign _WIRE_4__bore = _GEN_7;",
+      "wire _GEN_9 = _GEN_2 & io_cfIn_pc[2:0] == 3'h4;",
+      "wire _GEN_10 = _GEN_9 & ~(&(io_cfIn_instr[1:0]));",
+      "wire _GEN_11 = _GEN_9 & (&(io_cfIn_instr[1:0]));",
+      "assign _WIRE_7__bore = _GEN_11;",
+      "assign _WIRE_6__bore = _GEN_10;",
+      "wire _GEN_12 = _GEN_2 & io_cfIn_pc[2:0] == 3'h6;",
+      "wire _GEN_13 = _GEN_12 & ~(&(io_cfIn_instr[1:0]));",
+      "wire _GEN_14 = _GEN_12 & (&(io_cfIn_instr[1:0]));",
+      "assign _WIRE_9__bore = _GEN_14;",
+      "assign _WIRE_8__bore = _GEN_13;",
+      "assign _WIRE_1__bore = _GEN_2;",
+      "assign io_out_bits =\n    io_in_bits_func[4]\n      ? ((&(io_cfIn_instr[1:0]))\n           ? {{25{io_cfIn_pc[38]}}, io_cfIn_pc} + 64'h4\n           : {{25{io_cfIn_pc[38]}}, io_cfIn_pc} + 64'h2)\n      : io_in_bits_func[5] ? {{32{res[31]}}, res[31:0]} : res;",
+      "assign io_redirect_target = io_redirect_target_0;",
+      "assign io_redirect_valid = bpuUpdateReq_valid & predictWrong;"
+    ],
+    "node": [
+      {
+        "Identifier": [
+          {
+            "len": 18,
+            "line": 56,
+            "offset": 2378,
+            "original_line": 77
+          },
+          "io_redirect_target"
+        ]
+      },
+      531
+    ]
+  }
+]

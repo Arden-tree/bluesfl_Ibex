@@ -1,0 +1,6 @@
+{
+  "module_name": "RVZifencei",
+  "scope_name": "TOP.SimTop.cpu.soc.nutcore.cpu.soc.nutcore.isa.RVZifencei",
+  "description": "FENCE/FENCE.I reserved field check missing",
+  "bug_file": "src/main/scala/nutcore/isa/RVZifencei.scala"
+}
