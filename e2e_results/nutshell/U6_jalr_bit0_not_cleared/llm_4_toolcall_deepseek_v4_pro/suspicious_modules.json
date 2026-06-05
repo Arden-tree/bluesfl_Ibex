@@ -1,0 +1,70 @@
+[
+  [
+    "ALU",
+    [
+      {
+        "Identifier": [
+          {
+            "offset": 6126,
+            "line": 82,
+            "original_line": 97,
+            "len": 18
+          },
+          "io_redirect_target"
+        ]
+      },
+      515
+    ]
+  ],
+  [
+    "WBU",
+    [
+      {
+        "Identifier": [
+          {
+            "offset": 6126,
+            "line": 82,
+            "original_line": 97,
+            "len": 18
+          },
+          "io_redirect_target"
+        ]
+      },
+      515
+    ]
+  ],
+  [
+    "CSR",
+    [
+      {
+        "Identifier": [
+          {
+            "offset": 6126,
+            "line": 82,
+            "original_line": 97,
+            "len": 18
+          },
+          "io_redirect_target"
+        ]
+      },
+      515
+    ]
+  ],
+  [
+    "MOU",
+    [
+      {
+        "Identifier": [
+          {
+            "offset": 6126,
+            "line": 82,
+            "original_line": 97,
+            "len": 18
+          },
+          "io_redirect_target"
+        ]
+      },
+      515
+    ]
+  ]
+]

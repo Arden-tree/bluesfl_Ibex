@@ -14,6 +14,7 @@ mod wave;
 
 pub use agent::block::{
     block_checker::{BlockChecker, BlockCheckerAgent},
+    block_checker_toolcall::BlockCheckerToolAgent,
     block_reranker::{BlockReranker, BlockRerankerAgent},
     mod_checker::{ModuleChecker, ModuleCheckerAgent},
     mod_decision::{ModuleDecision, ModuleDecisionAgent},
