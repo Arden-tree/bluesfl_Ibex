@@ -1,0 +1,17 @@
+{
+  "bug_id": "U6_jalr_bit0_not_cleared",
+  "token_usage": {
+    "input_tokens": 202935,
+    "output_tokens": 29100,
+    "total_tokens": 232035
+  },
+  "token_price": null,
+  "choices": [
+    {
+      "module_name": "ALU",
+      "line_number": null,
+      "block_id": 5841,
+      "score": 1.0
+    }
+  ]
+}

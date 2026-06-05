@@ -8,7 +8,7 @@ use std::fs;
 use std::path::PathBuf;
 use sv_analysis::{
     get_module_files, init_logger, read_coverage_files, run_llm_tracer, save_data_to_json,
-    save_trace, TimeAnnotation,
+    save_trace, AgentMode, TimeAnnotation,
 };
 use sv_analysis::{AgentType, Block, BugIDType};
 
@@ -20,6 +20,8 @@ struct Args {
     dot_env: Option<String>,
     #[arg(short, long, value_enum, default_value_t = AgentType::OpenAI)]
     agent_type: AgentType,
+    #[arg(long, value_enum, default_value_t = AgentMode::Voting)]
+    agent_mode: AgentMode,
     #[arg(short, long, default_value = "gpt-4o-mini")]
     model: String,
     #[arg(long, default_value_t = 1, help = "Set maximum expand node number")]
@@ -137,6 +139,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         run_llm_tracer(
             args.bug_id.clone(),
             args.agent_type,
+            args.agent_mode,
             &args.model,
             args.vote_top_k,
             args.vote_total,

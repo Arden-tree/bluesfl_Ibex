@@ -1,17 +1,18 @@
+use crate::agent::block::block_checker_toolcall::BlockCheckerToolAgent;
 use crate::agent::block::block_reranker::BlockRerankerAgent;
 use crate::llm::LLMAidTracer;
 use crate::{
-    get_block_manager, save_trace_to_json, Block, BlockCheckerAgent, BlockManager, BugIDType,
-    CompositeCoverageTracker, CoverageTracker, DataFlowBlock, DataFlowBlockParser,
+    get_block_manager, save_trace_to_json, Block, BlockChecker, BlockCheckerAgent, BlockManager,
+    BugIDType, CompositeCoverageTracker, CoverageTracker, DataFlowBlock, DataFlowBlockParser,
     DataFlowBlockParserBuilder, LocalizationResult, Localizer, ModuleCheckerAgent, NodeID,
     ParameterCoverageReport, TimeAnnotation, Tracer,
 };
+use async_trait::async_trait;
 use clap::ValueEnum;
 use regex::Regex;
 use rig::agent::AgentBuilder;
 use rig::client::completion::{CompletionClient, CompletionModelHandle};
 use rig::completion::Usage;
-use rig::prelude::ProviderClient;
 use rig::providers::{anthropic, ollama, openai};
 use std::collections::HashMap;
 use std::error::Error;
@@ -28,14 +29,80 @@ pub enum AgentType {
     Ollama,
 }
 
+#[derive(Debug, Clone, PartialEq, ValueEnum)]
+pub enum AgentMode {
+    Voting,
+    ToolCall,
+}
+
+/// Enum dispatcher to allow either voting or toolcall BlockChecker at runtime.
+/// Required because BlockChecker: Clone, which prevents trait objects.
+#[derive(Clone)]
+pub enum BlockCheckerEnum {
+    Voting(BlockCheckerAgent<CompletionModelHandle<'static>>),
+    ToolCall(BlockCheckerToolAgent<CompletionModelHandle<'static>>),
+}
+
+#[async_trait]
+impl<'a> BlockChecker<'a, DataFlowBlock> for BlockCheckerEnum {
+    async fn determine(
+        &mut self,
+        block: &DataFlowBlock,
+        port_nodes: &[(NodeID, TimeAnnotation)],
+        nodes: &[(NodeID, TimeAnnotation)],
+        sig: NodeID,
+        sig_time: TimeAnnotation,
+        appendix_info: &str,
+        module_knowledge: &str,
+        historical_suspicious_blocks: &Vec<DataFlowBlock>,
+    ) -> anyhow::Result<(Option<Vec<(NodeID, TimeAnnotation)>>, bool, bool)> {
+        match self {
+            BlockCheckerEnum::Voting(v) => {
+                v.determine(
+                    block,
+                    port_nodes,
+                    nodes,
+                    sig,
+                    sig_time,
+                    appendix_info,
+                    module_knowledge,
+                    historical_suspicious_blocks,
+                )
+                .await
+            }
+            BlockCheckerEnum::ToolCall(t) => {
+                t.determine(
+                    block,
+                    port_nodes,
+                    nodes,
+                    sig,
+                    sig_time,
+                    appendix_info,
+                    module_knowledge,
+                    historical_suspicious_blocks,
+                )
+                .await
+            }
+        }
+    }
+}
+
 pub fn get_agent_builder<'a>(
     agent_type: AgentType,
     model_name: &str,
 ) -> AgentBuilder<CompletionModelHandle<'a>> {
+    let handle = get_model_handle(agent_type, model_name);
+    AgentBuilder::new(handle)
+}
+
+/// Create the CompletionModelHandle directly (needed for toolcall mode where
+/// we must rebuild the Agent with tools on each determine() call).
+pub fn get_model_handle<'a>(
+    agent_type: AgentType,
+    model_name: &str,
+) -> CompletionModelHandle<'a> {
     match agent_type {
         AgentType::OpenAI => {
-            // Use chat completions API (/chat/completions) instead of responses API (/responses).
-            // rig 0.19.0 defaults to ResponsesCompletionModel which is OpenAI-only.
             let openai_base =
                 env::var("API_BASE").unwrap_or("https://api.openai.com/v1".to_string());
             let openai_key = env::var("API_KEY").expect("Please set API_KEY");
@@ -50,12 +117,10 @@ pub fn get_agent_builder<'a>(
                 .custom_client(http_client)
                 .build()
                 .unwrap();
-            // Directly construct the chat-completions model (not the responses API model)
             let model = openai::completion::CompletionModel::new(client, model_name);
-            let handle = CompletionModelHandle {
+            CompletionModelHandle {
                 inner: std::sync::Arc::new(model),
-            };
-            AgentBuilder::new(handle)
+            }
         }
         AgentType::Claude => {
             let anthropic_base = env::var("ANTHROPIC_BASE_URL")
@@ -67,10 +132,9 @@ pub fn get_agent_builder<'a>(
                 .build()
                 .unwrap();
             let model = client.completion_model(model_name);
-            let handle = CompletionModelHandle {
+            CompletionModelHandle {
                 inner: std::sync::Arc::new(model),
-            };
-            AgentBuilder::new(handle)
+            }
         }
         AgentType::Ollama => {
             let ollama_host =
@@ -82,10 +146,9 @@ pub fn get_agent_builder<'a>(
                 .build()
                 .unwrap();
             let model = client.completion_model(model_name);
-            let handle = CompletionModelHandle {
+            CompletionModelHandle {
                 inner: std::sync::Arc::new(model),
-            };
-            AgentBuilder::new(handle)
+            }
         }
     }
 }
@@ -223,12 +286,13 @@ pub fn setup_block_mgr<'a, P: AsRef<Path>, CT: CoverageTracker>(
 
 pub fn get_all_llm<'a>(
     agent_type: AgentType,
+    agent_mode: AgentMode,
     model: &str,
     wave_path: &str,
     total_token_usage: Arc<Mutex<Usage>>,
 ) -> (
     ModuleCheckerAgent<CompletionModelHandle<'a>>,
-    BlockCheckerAgent<CompletionModelHandle<'a>>,
+    BlockCheckerEnum,
     BlockRerankerAgent<CompletionModelHandle<'a>>,
 ) {
     let sv_analysis_home =
@@ -252,31 +316,49 @@ pub fn get_all_llm<'a>(
             total_token_usage.clone(),
         )
     };
-    let block_checker = {
-        let block_checker_prompt_path = &format!("{sv_analysis_home}/prompts/block_checker_2.md");
-        let block_checker_system_prompt_path =
-            &format!("{sv_analysis_home}/prompts/block_checker_system.md");
-        let block_checker_system_prompt = fs::read_to_string(&block_checker_system_prompt_path)
-            .expect("Error when reading block_checker system prompt");
-        let llm_builder = get_agent_builder(agent_type.clone(), model);
-        let llm = llm_builder
-            .preamble(&block_checker_system_prompt)
-            .temperature(0.)
-            .build();
-        BlockCheckerAgent::new(
-            block_checker_prompt_path,
-            llm,
-            wave_path,
-            total_token_usage.clone(),
-        )
+
+    let block_checker = match agent_mode {
+        AgentMode::Voting => {
+            let block_checker_prompt_path = &format!("{sv_analysis_home}/prompts/block_checker_2.md");
+            let block_checker_system_prompt_path =
+                &format!("{sv_analysis_home}/prompts/block_checker_system.md");
+            let block_checker_system_prompt = fs::read_to_string(&block_checker_system_prompt_path)
+                .expect("Error when reading block_checker system prompt");
+            let llm_builder = get_agent_builder(agent_type.clone(), model);
+            let llm = llm_builder
+                .preamble(&block_checker_system_prompt)
+                .temperature(0.)
+                .build();
+            BlockCheckerEnum::Voting(BlockCheckerAgent::new(
+                block_checker_prompt_path,
+                llm,
+                wave_path,
+                total_token_usage.clone(),
+            ))
+        }
+        AgentMode::ToolCall => {
+            let system_prompt_path =
+                &format!("{sv_analysis_home}/prompts/block_checker_toolcall_system.md");
+            let prompt_template_path =
+                &format!("{sv_analysis_home}/prompts/block_checker_toolcall.md");
+            let model_handle = get_model_handle(agent_type.clone(), model);
+            BlockCheckerEnum::ToolCall(BlockCheckerToolAgent::new(
+                system_prompt_path,
+                prompt_template_path,
+                model_handle,
+                wave_path,
+                total_token_usage.clone(),
+            ))
+        }
     };
+
     let block_reranker = {
         let block_reranker_prompt_path = &format!("{sv_analysis_home}/prompts/block_reranker.md");
         let block_reranker_system_prompt_path =
             &format!("{sv_analysis_home}/prompts/block_reranker_system.md");
         let block_reranker_system_prompt = fs::read_to_string(&block_reranker_system_prompt_path)
             .expect("Error when reading block_reranker system prompt");
-        let llm_builder = get_agent_builder(agent_type.clone(), model);
+        let llm_builder = get_agent_builder(agent_type, model);
         let llm = llm_builder
             .preamble(&block_reranker_system_prompt)
             .temperature(0.)
@@ -294,6 +376,7 @@ pub fn get_all_llm<'a>(
 pub async fn run_llm_tracer<P: AsRef<Path>, I: ToString>(
     bug_id: BugIDType,
     agent_type: AgentType,
+    agent_mode: AgentMode,
     model: &str,
     vote_top_k: usize,
     vote_total: usize,
@@ -337,18 +420,14 @@ pub async fn run_llm_tracer<P: AsRef<Path>, I: ToString>(
     block_manager.dump_blocks_distribution("./")?;
     let total_token_usage = Arc::new(Mutex::new(Usage::default()));
     let (mod_checker, block_checker, block_reranker) =
-        get_all_llm(agent_type, model, wave_path, total_token_usage.clone());
+        get_all_llm(agent_type, agent_mode.clone(), model, wave_path, total_token_usage.clone());
 
-    // use crate::agent::block::block_checker::MockBlockCheckerAgent;
-    // use crate::agent::block::mod_checker::MockModuleCheckerAgent;
-    // let mod_checker = MockModuleCheckerAgent::new(
-    //     0.5,
-    //     2,
-    // );
-    // let block_checker = MockBlockCheckerAgent::new(0.1, 0.5, 4);
+    // In toolcall mode, disable voting (multi-turn tool-call provides robustness)
+    let effective_vote_total = match agent_mode {
+        AgentMode::ToolCall => 1,
+        AgentMode::Voting => vote_total,
+    };
 
-    // let vote_top_k = 2; // control expand how many nodes
-    // let vote_total = 1; // control voting times
     let mut llm_tracer = LLMAidTracer::new(
         bug_id,
         model,
@@ -363,7 +442,7 @@ pub async fn run_llm_tracer<P: AsRef<Path>, I: ToString>(
         block_reranker,
         enable_early_stop,
         vote_top_k,
-        vote_total,
+        effective_vote_total,
         total_token_usage.clone(),
     );
     let total_blocks = get_total_blocks(&block_manager);
