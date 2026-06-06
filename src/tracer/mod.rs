@@ -1,6 +1,6 @@
 use crate::block::Block;
 use crate::utils::extract_signal_suffix;
-use crate::{get_last_scope, BlockType};
+use crate::{get_last_scope, BlockType, CircuitType};
 use async_trait::async_trait;
 use log::{debug, info, warn};
 use std::collections::{HashSet, VecDeque};
@@ -293,6 +293,7 @@ where
                 } else {
                     let vars = vars.unwrap();
                     res.extend(vars);
+                    let mut cross_module_deps: Vec<NodeID> = Vec::new();
                     loop {
                         let len = res.len();
                         let mut tmp = vec![];
@@ -302,6 +303,32 @@ where
                             if let Some(vars) = vars {
                                 if v_next_time == time {
                                     tmp.extend(vars);
+                                }
+                            } else if matches!(btype, BlockType::Always(CircuitType::SEQ)) {
+                                // Cross-module fallback for Chisel-generated pipeline registers:
+                                // When a SEQ block's driven signal is a cross-module wire
+                                // (e.g., _exu_io_out_bits_commits_0), search child scopes for
+                                // ModuleOutput blocks that produce this wire.
+                                // ModuleOutput.output_nodes = parent-side wire names
+                                // ModuleOutput.input_nodes = child-side port names
+                                // These cross-module signals go to a separate set — they cannot
+                                // be resolved within the current block's fixpoint, but should be
+                                // returned for the outer trace loop to resolve via get_block_result.
+                                for next_scope in self.get_next_scopes(block.get_scope()) {
+                                    if let Ok(sub_blocks) = self.get_scope_blocks(next_scope) {
+                                        for b in sub_blocks {
+                                            if matches!(b.get_block_type(), BlockType::ModuleOutput)
+                                                && b.get_output_nodes().iter()
+                                                    .any(|n| n.get_text() == v.get_text())
+                                            {
+                                                for n in b.get_input_nodes() {
+                                                    if let NodeID::Identifier(_, _) = n {
+                                                        cross_module_deps.push((*n).clone());
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -314,7 +341,7 @@ where
                     // vars.sort_by(|a, b| a.cmp(b));
 
                     // FIX: After reaching fixpoint, remove vars that contains in left-hand of current block.
-                    let vars = vars
+                    let mut vars = vars
                         .into_iter()
                         // FIXME: there may be a bug. I found that some vars in fixpoint not exist in output_nodes.
                         .filter(|v| {
@@ -325,6 +352,15 @@ where
                                 .all(|ov| ov.get_text() != v.get_text())
                         })
                         .collect::<Vec<_>>();
+                    // Append cross-module deps from SEQ fallback (resolved via ModuleOutput blocks).
+                    // These are child-scope signal names that the outer trace loop should resolve
+                    // through get_block_result(), not through fixpoint iteration.
+                    if !cross_module_deps.is_empty() {
+                        warn!("SEQ cross-module: added {} deps to fixpoint result: {:?}",
+                            cross_module_deps.len(),
+                            cross_module_deps.iter().map(|n| n.get_text()).collect::<Vec<_>>());
+                        vars.extend(cross_module_deps);
+                    }
                     (next_time, Some(vars))
                 }
             }

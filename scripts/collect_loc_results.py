@@ -70,7 +70,7 @@ def load_json_file(file_path: Path) -> List[Dict[Any, Any]]:
         return []
 
 
-def merge_json_files(root_folder: str = "mutate_result", output_file: str = "merged_results.json") -> None:
+def merge_json_files(root_folder: str = "e2e_results/nutshell", output_file: str = "merged_results.json") -> None:
     """
     Merge JSON files from different bug_id folders.
 
@@ -95,11 +95,18 @@ def merge_json_files(root_folder: str = "mutate_result", output_file: str = "mer
         bug_id = bug_folder.name
 
         try:
-            # Find the highest numbered ${res_prefix}_* folder
-            highest_res_folder = find_highest_res_folder(bug_folder)
+            # Find matching files — support both structures:
+            # Nested: bug_id/llm_1/llm_loc_results_bug_id.json  (Ibex-style)
+            # Flat:   U6_t515/llm_loc_results_U6_backend.json   (NutShell-style)
+            matching_files = list(bug_folder.glob(f"*_loc_results_*.json"))
 
-            # Find matching files
-            matching_files = list(highest_res_folder.glob(f"*_loc_results_{bug_id}.json"))
+            if not matching_files:
+                # Try nested structure: look for highest llm_* subfolder
+                try:
+                    highest_res_folder = find_highest_res_folder(bug_folder)
+                    matching_files = list(highest_res_folder.glob(f"*_loc_results_*.json"))
+                except ValueError:
+                    pass
 
             if not matching_files:
                 print(f"No matching file found for bug_id {bug_id}")
@@ -149,8 +156,8 @@ def main():
     parser = argparse.ArgumentParser(description="Merge JSON files from different bug_id folders")
     parser.add_argument(
         "--root", "-r",
-        default="mutate_result",
-        help="Root folder containing bug_id subfolders (default: mutate_result)"
+        default="e2e_results/nutshell",
+        help="Root folder containing bug_id subfolders (default: e2e_results/nutshell)"
     )
     parser.add_argument(
         "--output", "-o",
@@ -182,7 +189,7 @@ def main():
 
 
 if __name__ == "__main__":
-    # --root=/home/lzz/dac26/hdl_fl_data/mutate_result
+    # --root=./e2e_results/nutshell
     # --output=./sbfl_merged_results.json
     # --prefix=llm
     exit(main())
