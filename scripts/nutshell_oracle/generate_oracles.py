@@ -199,8 +199,58 @@ def generate_files(output_dir: str):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        bug_id = sys.argv[1]
+    import argparse
+
+    ap = argparse.ArgumentParser(description="NutShell oracle generator for BluesFL")
+    ap.add_argument("bug_id", nargs="?", help="Print oracle for a specific bug")
+    ap.add_argument("--update-bid", metavar="RESULTS_DIR",
+                    help="Update bid fields from sv_analysis results directory "
+                         "(searches for llm_loc_results_*.json to extract block_id)")
+    args = ap.parse_args()
+
+    if args.update_bid:
+        results_dir = Path(args.update_bid)
+        if not results_dir.exists():
+            print(f"Results directory not found: {results_dir}", file=sys.stderr)
+            sys.exit(1)
+
+        updated = 0
+        for result_file in results_dir.rglob("llm_loc_results_*.json"):
+            try:
+                with open(result_file) as f:
+                    data = json.load(f)
+            except (json.JSONDecodeError, OSError) as e:
+                print(f"  Skipping {result_file}: {e}")
+                continue
+
+            choices = data.get("choices", [])
+            if not choices:
+                continue
+
+            # Use the top-1 choice to find matching oracle
+            top_choice = choices[0]
+            bid = top_choice.get("block_id")
+            module = top_choice.get("module_name")
+            if not bid:
+                continue
+
+            # Find matching oracle by module_name
+            for bug_id, oracle in ORACLES.items():
+                if oracle.get("module_name") == module and "bid" not in oracle:
+                    oracle["bid"] = bid
+                    print(f"  Updated {bug_id}: bid={bid} (from {result_file.name})")
+                    updated += 1
+                    break
+
+        if updated:
+            output_dir = str(Path(__file__).parent)
+            generate_files(output_dir)
+            print(f"\n  Updated {updated} oracle(s)")
+        else:
+            print("  No new bid values to update")
+
+    elif args.bug_id:
+        bug_id = args.bug_id
         if bug_id in ORACLES:
             print(json.dumps(ORACLES[bug_id], indent=2))
         else:

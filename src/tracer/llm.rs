@@ -633,6 +633,49 @@ where
         local_trace
     }
 
+    /// Shallow trace for ModuleChecker: finds input port blocks with signal values
+    /// without deep expansion. Uses a small trace_limit to avoid CSR perfCnts explosion.
+    async fn get_local_trace_with_limit(
+        &mut self,
+        block: &T,
+        local_sig: &NodeID,
+        time: Option<TimeAnnotation>,
+        limit: Option<usize>,
+    ) -> Vec<(T, Option<TimeAnnotation>)> {
+        let sub_scopes = vec![block.get_scope().to_string()];
+        let old = self.dynamic_tracer.pos_visited.clone();
+        let ret = self
+            .dynamic_tracer
+            .trace(
+                block.get_scope(),
+                local_sig.get_text(),
+                time,
+                self.time_bound,
+                limit,  // shallow limit for ModuleChecker
+                Some(sub_scopes),
+            )
+            .await;
+        self.dynamic_tracer.pos_visited = old;
+        ret
+    }
+
+    /// Lightweight port_blocks builder for ModuleChecker.
+    /// Gets ModuleInput blocks directly from block_manager without running a full trace.
+    /// This enables ModuleChecker to decide dive/not_dive BEFORE expensive expansion.
+    fn build_port_blocks_for_module_check(
+        &self,
+        block: &T,
+        time: Option<TimeAnnotation>,
+    ) -> Vec<(T, TimeAnnotation)> {
+        self.dynamic_tracer
+            .block_manager
+            .get_port_blocks(block.get_scope())
+            .into_iter()
+            .filter(|b| matches!(b.get_block_type(), BlockType::ModuleInput))
+            .map(|b| (b, time.unwrap()))
+            .collect()
+    }
+
     fn filter_input_ports_from_trace(
         &self,
         cur_scope: &str,
@@ -713,58 +756,14 @@ where
 
         match block.get_block_type() {
             BlockType::ModuleOutput => {
-                trace!("module_checker start for module: {}, sig={}, time={:?}", block.get_module_name(), sig.get_text(), time);
-                // Try output_nodes first (parent-side name → dataflow maps to child port)
-                let local_sigs: Vec<NodeID> = block
-                    .get_output_nodes()
-                    .into_iter()
-                    .filter(|&node| node.get_text() == sig.get_text())
-                    .flat_map(|node| block.get_node_dataflow(node.clone()))
-                    .collect();
-                let local_sig = if !local_sigs.is_empty() {
-                    local_sigs[0].clone()
-                } else {
-                    // sig matched on input_nodes (child port name) — sig IS the local port
-                    let input_match = block.get_input_nodes()
-                        .into_iter()
-                        .any(|node| node.get_text() == sig.get_text());
-                    if input_match {
-                        sig.clone()
-                    } else {
-                        warn!(
-                            "ModuleChecker: no local_sig for output sig='{}' in module={}, fallback to dataflow",
-                            sig.get_text(), block.get_module_name()
-                        );
-                        return self.dynamic_tracer
-                            .get_driven_signals_fixpoint(block, cur_scope, time, sig)
-                            .await;
-                    }
-                };
-                let local_trace = self.get_local_trace(block, &local_sig, time).await;
-                let port_blocks = self.filter_input_ports_from_trace(cur_scope, &local_trace);
-                if port_blocks.is_empty() {
-                    // maybe this output port is assigned by a constant.
-                    warn!(
-                        "No port blocks found for scope {}, block bid={}, block type={}",
-                        cur_scope, block.get_bid(), block.get_block_type()
-                    );
-                }
-                let local_trace = local_trace
-                    .into_iter()
-                    .map(|(block, time)| (block, time.unwrap()))
-                    .collect();
-                let ret = self.llm_request_for_ports(
-                    cur_scope,
-                    block,
-                    &port_blocks,
-                    sig,
-                    &local_sig,
-                    time,
-                    local_trace,
-                )
-                    .await;
-                info!("LLM's mod_checker decision for [sig={}, module={}, time={:?}] is {:?}", sig.get_text(), block.get_module_name(), time, ret);
-                ret
+                // Paper-aligned (Algorithm 1): Blues traces backward through dataflow
+                // without ModuleChecker. Coverage filtering happens in IntraBlockAnalysis.
+                // The LLM navigates the resulting instruction execution path via tool-calls.
+                info!("[TRACE] ModuleOutput: module={}, sig={}, time={:?} — tracing dataflow",
+                    block.get_module_name(), sig.get_text(), time);
+                self.dynamic_tracer
+                    .get_driven_signals_fixpoint(block, cur_scope, time, sig)
+                    .await
             }
             BlockType::Assign | BlockType::Always(_)
             // Add guard, block checker only enabled when mod_checker mark the bid in set.

@@ -350,7 +350,8 @@ def process_bug(cfg, bug_id: str) -> bool:
     # If start_time is 0 (placeholder), try to use a provided value
     if test_info['start_time'] == 0 and cfg.start_time is not None:
         test_info['start_time'] = cfg.start_time
-        test_info['time_bound'] = max(cfg.start_time - 30, 0)
+        instr_cnt = test_info.get('emu_instr_cnt', 0) or 4
+        test_info['time_bound'] = max(cfg.start_time - instr_cnt * TIME_STEP, 0)
         test_info['start_time_probed'] = True
         with open(test_info_path, 'w') as f:
             json.dump(test_info, f, indent=2)
@@ -417,7 +418,7 @@ def main():
     # LLM config
     parser.add_argument("--agent-type", default="open-ai",
                         choices=["open-ai", "claude", "ollama"])
-    parser.add_argument("--model", "-m", default="gpt-4o-mini")
+    parser.add_argument("--model", "-m", default="deepseek-v4-flash")
     parser.add_argument("--vote-total", type=int, default=2)
     parser.add_argument("--vote-top-k", type=int, default=1)
     parser.add_argument("--prefix", default="llm",

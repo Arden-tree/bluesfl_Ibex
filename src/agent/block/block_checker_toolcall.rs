@@ -91,18 +91,31 @@ where
                 format!("{{\"error\": \"{}\"}}", e)
             });
 
-        // Build driven signals list (names + times only, no values — LLM reads values via tool)
-        let driven_signals_json = serde_json::to_string_pretty(
-            &input_nodes
-                .iter()
-                .map(|(node, t)| {
-                    serde_json::json!({
-                        "name": node.get_text(),
-                        "time": t
+        // Build driven signals list with values (aligned with paper Figure 3)
+        // LLM can also use read_values tool to inspect additional signals
+        let input_var_names_with_t: Vec<_> = input_nodes
+            .iter()
+            .map(|(n, t)| (n.get_text(), t))
+            .collect();
+        let driven_signals_json = if let Ok(ret) = self
+            .waveform_mgr
+            .display_signal_values_with_batch_json(&cur_scope, &input_var_names_with_t, false)
+        {
+            ret
+        } else {
+            warn!("Failed to read driven signal values, falling back to names only");
+            serde_json::to_string_pretty(
+                &input_nodes
+                    .iter()
+                    .map(|(node, t)| {
+                        serde_json::json!({
+                            "name": node.get_text(),
+                            "time": t
+                        })
                     })
-                })
-                .collect::<Vec<_>>(),
-        )?;
+                    .collect::<Vec<_>>(),
+            )?
+        };
 
         // Build the prompt using the template
         let args = prompt_args![
@@ -163,7 +176,10 @@ where
             s.checked_signals.len()
         );
 
-        if terminate {
+        // Per paper Section 3.4: exit ends the LLM session for this block,
+        // but check_signals should still feed into the BFS for upstream tracing.
+        // Only terminate the BFS branch when terminate=true AND no checked_signals.
+        if terminate && s.checked_signals.is_empty() {
             return Ok((None, suspicious, terminate));
         }
 
@@ -208,10 +224,14 @@ where
             );
         }
 
+        // When terminate=true but we have checked_signals, don't propagate terminate
+        // so the tracer will actually use these signals for BFS continuation.
+        let should_terminate = terminate && selected_nodes.is_empty();
+
         if selected_nodes.is_empty() {
-            Ok((None, suspicious, terminate))
+            Ok((None, suspicious, should_terminate))
         } else {
-            Ok((Some(selected_nodes), suspicious, terminate))
+            Ok((Some(selected_nodes), suspicious, should_terminate))
         }
     }
 }

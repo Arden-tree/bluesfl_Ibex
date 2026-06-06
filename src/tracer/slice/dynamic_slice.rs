@@ -109,8 +109,17 @@ where
         sig: NodeID,
         time: Option<TimeAnnotation>,
     ) -> (Option<TimeAnnotation>, Option<Vec<NodeID>>) {
-        // For AssignBlock, they are all covered. So we can directly reach fix point.
-        // For AlwaysBlock, not all lines are covered, So we need add covered line to the fix point iteration.
+        // Paper-aligned IntraBlockAnalysis (Algorithm 1, lines 13-21):
+        // - COMB: coverage check at time t, propagate driven signals at time t
+        // - SEQ:  coverage check at time t-1, propagate driven signals at time t-1
+        //         if not covered at t-1 → register holds value, return ({sig}, t-1)
+
+        // Compute next_time FIRST (needed for coverage check)
+        let next_time = if matches!(btype, BlockType::Always(CircuitType::SEQ)) {
+            Some(time.unwrap() - self.time_step)  // t-1 for SEQ
+        } else {
+            time  // t for COMB/Assign
+        };
 
         // FIXME: only when a sig exist, we maintain it and repeat use sig@t-1. If this circuit not exist, we should ignore it.
         let covered_lines = if matches!(btype, BlockType::Assign) {
@@ -147,13 +156,14 @@ where
                     )
                 })
                 .filter_map(|(lineno, original_lineno)| {
-                    // get covered lineno in block's scope at time T.
+                    // Paper-aligned: check coverage at next_time
+                    // COMB: next_time = t (same time), SEQ: next_time = t-1
                     self.coverage_tracker
                         .check_line_covered(
                             Some(btype.clone()),
                             Some(block.get_scope()),
                             Some(block.get_module_name()),
-                            Some(time.unwrap()),
+                            next_time,
                             original_lineno,
                         )
                         .map(|count| (lineno, count))
@@ -177,12 +187,6 @@ where
                     .any(|(line, count)| node.get_locate().line == *line && *count > 0)
             })
             .collect::<Vec<_>>();
-
-        let mut next_time = time;
-
-        if matches!(btype, BlockType::Always(CircuitType::SEQ)) {
-            next_time = Some(time.unwrap() - self.time_step);
-        }
 
         let vars = if local_sigs.is_empty() && !covered_lines.is_empty() {
             // Only when this line is really instantiated in the final circuit
@@ -237,11 +241,15 @@ where
                 warn!("SEQ fallback: no dataflow deps for sig='{}'", sig.get_text());
                 None
             } else {
-                // Filter out valid/ready control signals — they cause tracing to diverge
-                // to unrelated modules. Pipeline registers should trace data, not control.
+                // Filter out control/perf signals — they cause tracing to diverge.
+                // Pipeline registers should trace data, not control or perf counters.
                 let filtered: Vec<NodeID> = direct_deps.iter().filter(|dep| {
                     let t = dep.get_text();
-                    !t.ends_with("_valid") && !t.ends_with("_ready") && t != "valid" && t != "ready"
+                    !t.ends_with("_valid") && !t.ends_with("_ready")
+                        && t != "valid" && t != "ready"
+                        && !t.contains("perfCnt") && !t.contains("perfCntCond")
+                        && !t.contains("perfCntCond_") && !t.starts_with("_GEN")
+                        && !t.ends_with("__bore")
                 }).cloned().collect();
                 let chosen = if filtered.is_empty() { direct_deps.clone() } else { filtered };
                 warn!("SEQ fallback: found {} deps for sig='{}', selected {}: {:?}",
