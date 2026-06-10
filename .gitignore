@@ -10,3 +10,40 @@ scripts/logs
 /**/rm_params.tree.json
 exps/exp_logs
 exps/metrics_out
+# Auto-generated
+blocks.json
+signal_name_map.json
+
+# e2e test results (can be regenerated)
+e2e_results/ctrl_bug_a_percycle/
+e2e_results/ctrl_bug_b_lsu_valid_percycle/
+e2e_results/d1_like_xor_and_percycle/
+e2e_results/D1_sub_sra_decode_percycle/
+e2e_results/E2_load_exception_writeback_percycle/
+e2e_results/M1_div_by_zero_percycle/
+e2e_results/U1_addiw_signext_percycle/
+e2e_results/U1_addiw_signext/
+e2e_results/U6_jalr_bit0_not_cleared_percycle/
+e2e_results/U6_debug3/
+e2e_results/U7_lb_lbu_ext_swap_percycle/
+e2e_results/X3_csr_privilege_access_percycle/
+e2e_results/nutshell/U1_addiw_signext/
+e2e_results/nutshell/U6_jalr_bit0_not_cleared/llm_3/
+e2_results/nutshell/U6_jalr_bit0_not_cleared/llm_4/
+e2e_results/nutshell/U6_jalr_bit0_not_cleared/llm_5/
+e2e_results/test_block_checker/
+e2e_results/test_module_output/
+e2e_results/test_no_suffix/
+e2e_results/test_p0p1/
+e2e_results/test_u6_cov2/
+e2e_results/test_u6_coverage/
+e2e_results/u1_dataflow/
+e2e_results/u6_debug/
+e2e_results/u6_no_early_stop/
+e2e_results/u6_test_v2/
+e2e_results/u6_v4flash_validated/
+e2e_results/u6_v4pro/
+
+# Python cache
+scripts/__pycache__/
+scripts/nutshell_oracle/__pycache__/
