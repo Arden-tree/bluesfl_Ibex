@@ -15,7 +15,9 @@ impl WaveformManager {
     }
 
     fn create_wave_inspector(&self) -> anyhow::Result<WaveInspector> {
-        Ok(WaveInspector::new(&self.waveform_path)?)
+        std::panic::catch_unwind(|| WaveInspector::new(&self.waveform_path))
+            .map_err(|e| anyhow::anyhow!("Waveform loading panicked: {:?}", e))?
+            .map_err(Into::into)
     }
 
     fn extract_bit_width_and_value(value: &crate::SignalValueInterpretation) -> (String, String) {

@@ -271,7 +271,14 @@ where
         // while cur_scope is the parent (e.g., ...backend). Only assert for
         // Always/Assign blocks which should always match.
         if matches!(block.get_block_type(), BlockType::Always(_) | BlockType::Assign) {
-            assert_eq!(block.get_scope(), cur_scope);
+            // Allow block scope to be an ancestor of cur_scope (signals can
+            // cross module boundaries upward in hierarchical designs)
+            let bs = block.get_scope();
+            assert!(
+                bs == cur_scope || cur_scope.starts_with(&format!("{}.", bs)),
+                "block scope '{}' should match or be ancestor of cur_scope '{}'",
+                bs, cur_scope
+            );
         }
         let btype = block.get_block_type();
         let (next_time, vars) = match btype.clone() {

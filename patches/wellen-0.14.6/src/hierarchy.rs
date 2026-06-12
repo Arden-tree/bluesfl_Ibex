@@ -901,6 +901,9 @@ impl HierarchyBuilder {
 
     /// adds a variable or scope to the hierarchy tree
     fn add_to_hierarchy_tree(&mut self, node_id: ScopeOrVarRef) -> Option<ScopeRef> {
+        if self.scope_stack.is_empty() {
+            return None;
+        }
         let entry_pos = find_parent_scope(&self.scope_stack);
         let entry = &mut self.scope_stack[entry_pos];
         let parent = entry.scope_id;
@@ -938,6 +941,9 @@ impl HierarchyBuilder {
     fn find_duplicate_scope(&self, name_id: HierarchyStringId) -> Option<ScopeRef> {
         let name = self.get_str(name_id);
 
+        if self.scope_stack.is_empty() {
+            return None;
+        }
         let parent = &self.scope_stack[find_parent_scope(&self.scope_stack)];
         let mut maybe_item = if parent.scope_id == usize::MAX {
             // we are on the top
@@ -1156,9 +1162,15 @@ impl HierarchyBuilder {
 
 /// finds the first not flattened parent scope
 fn find_parent_scope(scope_stack: &[ScopeStackEntry]) -> usize {
+    if scope_stack.is_empty() {
+        return 0;
+    }
     let mut index = scope_stack.len() - 1;
     loop {
         if scope_stack[index].flattened {
+            if index == 0 {
+                return 0;
+            }
             index -= 1;
         } else {
             return index;
