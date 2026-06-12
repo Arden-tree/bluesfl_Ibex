@@ -1103,7 +1103,7 @@ impl HierarchyBuilder {
     }
 
     pub fn pop_scope(&mut self) {
-        self.scope_stack.pop().unwrap();
+        let _ = self.scope_stack.pop();
     }
 
     pub fn set_date(&mut self, value: String) {

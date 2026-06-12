@@ -501,21 +501,13 @@ where
             .await;
 
         if suspicious_vars.is_none() {
-            // Terminate
-            // dive
-            trace!(
-                "[DIVE] block {} in module {}, suspicious vars: {:?}@{:?}",
-                block.get_bid(),
-                block.get_module_name(),
-                sig,
-                time,
-            );
-            let early_stop = if self.early_stop {
-                EarlyStop::Block
-            } else {
-                EarlyStop::None
-            };
-            res.map(|(next_scope, next_vars, _early_stop)| (next_scope, next_vars, early_stop))
+            // Paper alignment (Section 3.4): Blues constructs the full
+            // instruction execution path via pure dataflow BFS (Algorithm 1).
+            // The LLM's terminate decision only means "done inspecting this
+            // block" — it does NOT stop the path construction. Always continue
+            // dataflow tracing so the LLM can inspect deeper blocks (e.g.,
+            // tracing from fetch → ALU as in paper Figure 6).
+            res
         } else {
             // not dive
             trace!(
