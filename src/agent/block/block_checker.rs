@@ -106,11 +106,16 @@ where
     ) -> anyhow::Result<(Option<Vec<(NodeID, TimeAnnotation)>>, bool, bool)> {
         let sig_name = sig.get_text();
         let cur_scope = block.get_scope().split(".").collect::<Vec<_>>();
-        let sig_value = self.base.waveform_mgr.display_signal_values_at_time_json(
+        let sig_value = if let Ok(ret) = self.base.waveform_mgr.display_signal_values_at_time_json(
             &cur_scope,
             &vec![sig_name],
             sig_time,
-        )?;
+        ) {
+            ret
+        } else {
+            warn!("Error getting sig value for {} @ {:?}", sig_name, sig_time);
+            "Cannot get waveform".to_string()
+        };
 
         let input_var_nodes_with_t = input_nodes;
         let input_var_names_with_t = input_nodes
