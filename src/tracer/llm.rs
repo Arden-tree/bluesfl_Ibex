@@ -623,6 +623,140 @@ where
     }
 }
 
+impl<'a, 'b, Parser, CT, MC, BC, BR, T>
+    LLMAidTracer<'a, 'b, Parser, CT, MC, BC, BR, T>
+where
+    T: Block<'a> + Sync + Send + Debug + 'static,
+    Parser: BlockParser<Block<'a> = T>,
+    CT: CoverageTracker + Send + Sync,
+    MC: ModuleChecker + Send + 'static,
+    BC: BlockChecker<'a, Parser::Block<'a>> + Send + 'static,
+    BR: BlockReranker<'a, Parser::Block<'a>> + Send + 'static,
+{
+    /// Phase 1: Pure Blues BFS (Algorithm 1) — builds instruction execution
+    /// path without any LLM calls. Uses DynamicSlicing directly.
+    pub async fn run_phase1_bfs(
+        &mut self,
+        scope_name: &str,
+        sig: &str,
+        time: Option<TimeAnnotation>,
+        time_bound: Option<TimeAnnotation>,
+        trace_limit: Option<usize>,
+    ) -> Vec<(T, Option<TimeAnnotation>)> {
+        info!("[Phase 1] Starting pure Blues BFS (no LLM)");
+        let trace = self
+            .dynamic_tracer
+            .trace(scope_name, sig, time, time_bound, trace_limit, None)
+            .await;
+        info!(
+            "[Phase 1] BFS complete: {} blocks in instruction execution path",
+            trace.len()
+        );
+        trace
+    }
+
+    /// Phase 2: LLM navigates the pre-computed instruction execution path.
+    /// For each Assign/Always block, the LLM evaluates code context +
+    /// signal values and marks suspicious blocks.
+    pub async fn run_phase2_llm(&mut self, trace_blocks: &[(T, Option<TimeAnnotation>)]) {
+        info!(
+            "[Phase 2] Starting LLM navigation over {} trace blocks",
+            trace_blocks.len()
+        );
+        let assign_always_count = trace_blocks
+            .iter()
+            .filter(|(b, _)| {
+                matches!(
+                    b.get_block_type(),
+                    BlockType::Assign | BlockType::Always(_)
+                )
+            })
+            .count();
+        info!(
+            "[Phase 2] {} Assign/Always blocks to evaluate (ModuleOutput skipped)",
+            assign_always_count
+        );
+
+        for (block, time) in trace_blocks {
+            let btype = block.get_block_type();
+            if !matches!(btype, BlockType::Assign | BlockType::Always(_)) {
+                continue;
+            }
+
+            // Extract signal + dataflow from Phase 1 trace info
+            let (sig, df_vars) = match block.get_suspicious_trace() {
+                Some(trace) => (trace.0.clone(), trace.1.clone()),
+                None => {
+                    warn!(
+                        "[Phase 2] Block {} has no suspicious_trace, skipping",
+                        block.get_bid()
+                    );
+                    continue;
+                }
+            };
+
+            let cur_scope = block.get_scope();
+            let t = time.unwrap_or(0);
+
+            // Get dataflow from dynamic tracer (pure, no LLM)
+            let (_, next_vars) = {
+                let old = self.dynamic_tracer.pos_visited.clone();
+                let result = self
+                    .dynamic_tracer
+                    .get_driven_signals_in_block(
+                        block,
+                        btype,
+                        sig.clone(),
+                        *time,
+                    );
+                self.dynamic_tracer.pos_visited = old;
+                result
+            };
+
+            let sig_dataflow_vars = next_vars
+                .unwrap_or_default()
+                .into_iter()
+                .map(|n| (n, Some(t)))
+                .collect::<Vec<_>>();
+
+            // Build port_blocks for LLM context
+            let local_trace = self.get_local_trace(block, &sig, *time).await;
+            let port_blocks = self
+                .filter_input_ports_from_trace(cur_scope, &local_trace)
+                .iter()
+                .flat_map(|(b, t)| {
+                    b.get_output_nodes()
+                        .into_iter()
+                        .map(|n| (n.clone(), t.clone()))
+                })
+                .collect::<Vec<_>>();
+
+            // LLM evaluation — marks suspicious blocks as side effect
+            warn!(
+                "[Phase 2] Evaluating block {} (module={}, sig={}, time={:?})",
+                block.get_bid(),
+                block.get_module_name(),
+                sig.get_text(),
+                time
+            );
+            let _ = self
+                .llm_voting_for_blocks(
+                    block,
+                    &port_blocks,
+                    &sig_dataflow_vars,
+                    &sig,
+                    *time,
+                )
+                .await;
+        }
+
+        info!(
+            "[Phase 2] Complete: {} suspicious blocks identified",
+            self.suspicious_blocks.len()
+        );
+    }
+}
+
 #[async_trait(?Send)]
 impl<'a, 'b, T, Parser, CT, MC, BC, BR> Tracer<'a, T>
     for LLMAidTracer<'a, 'b, Parser, CT, MC, BC, BR, T>
