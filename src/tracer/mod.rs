@@ -406,11 +406,15 @@ where
         });
 
         let next_scope = if matches!(block.get_block_type(), BlockType::ModuleInput) {
-            // ModuleInput: signal goes from parent to child, continue in parent scope
-            if let Some(last_scope) = get_last_scope(&cur_scope) {
+            // ModuleInput: signal goes from parent to child.
+            // Use the block's scope (where the port is declared), not cur_scope
+            // (where the BFS is searching). The port might be declared in a
+            // parent of cur_scope, so we need the parent of block's scope.
+            let port_scope = block.get_scope();
+            if let Some(last_scope) = get_last_scope(port_scope) {
                 last_scope
             } else {
-                cur_scope
+                port_scope
             }
         } else if matches!(block.get_block_type(), BlockType::ModuleOutput) {
             // ModuleOutput: signal goes from child to parent, but the input_nodes
