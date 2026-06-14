@@ -446,16 +446,24 @@ pub async fn run_llm_tracer<P: AsRef<Path>, I: ToString>(
         total_token_usage.clone(),
     );
     let total_blocks = get_total_blocks(&block_manager);
+
+    // Paper-aligned two-phase architecture (Section 3):
+    // Phase 1: Pure Blues BFS (Algorithm 1) — constructs instruction execution
+    //          path via dataflow tracing, WITHOUT any LLM calls.
+    // Phase 2: LLM navigation — LLM evaluates blocks in the pre-computed path,
+    //          reads signal values, and marks suspicious blocks.
     let trace_blocks = llm_tracer
-        .trace(
+        .run_phase1_bfs(
             start_scope,
             start_sig,
             Some(time),
             Some(time_bound),
             trace_limit,
-            prefix,
         )
         .await;
+
+    // Phase 2: LLM evaluates each Assign/Always block in the path
+    llm_tracer.run_phase2_llm(&trace_blocks).await;
 
     let suspicious_modules = llm_tracer.get_localized_modules();
     let suspicious_blocks = llm_tracer.get_localized_blocks();
