@@ -58,6 +58,9 @@ where
     fn get_scopes(&self) -> Vec<&str> {
         self.block_manager.get_scopes()
     }
+    fn reset_visit_tracking(&mut self) {
+        self.pos_visited.clear();
+    }
     fn get_block_covered_ast_lines(&self, block: &T, time: TimeAnnotation) -> Vec<(u32, usize)> {
         let btype = block.get_block_type();
         let covered_lines = block
