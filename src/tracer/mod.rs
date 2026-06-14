@@ -546,7 +546,9 @@ where
 
                 debug!("head_sig: {}, cur_time: {:?}", head_sig, cur_time);
                 let fg = !res.iter().any(|(sig, b, t)| {
-                    b.get_bid() == block.get_bid() && *t == cur_time && *sig == head_sig
+                    b.get_bid() == block.get_bid()
+                        && *t == cur_time
+                        && sig.get_text() == head_sig.get_text()
                 });
                 if fg {
                     debug!(
@@ -559,6 +561,7 @@ where
                         .get_driven_signals_fixpoint(block, &cur_scope, cur_time, &head_sig)
                         .await
                     {
+                        // Paper alignment (Algorithm 1): dedup by signal text name,
                         next_vars_with_time.iter().for_each(|(node, next_time)| {
                             debug!(
                                 "line: {}, name: {}, time: {:?}",
