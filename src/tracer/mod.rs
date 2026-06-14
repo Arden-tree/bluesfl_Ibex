@@ -46,6 +46,9 @@ where
     fn get_scopes(&self) -> Vec<&str>;
     // get current block covered ast lines (ast_lineno, count)
     fn get_block_covered_ast_lines(&self, block: &T, time: TimeAnnotation) -> Vec<(u32, usize)>;
+    /// Reset per-block visit tracking. Called before each get_driven_signals_fixpoint
+    /// to prevent mega-AssignBlock visited entries from blocking later signals.
+    fn reset_visit_tracking(&mut self) {}
     fn get_next_scopes(&self, scope_name: &str) -> Vec<&str> {
         self.get_scopes()
             .iter()
