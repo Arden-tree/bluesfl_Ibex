@@ -133,7 +133,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let time_step = args.time_step;
     let trace_limit = None;
 
-    let enable_early_stop = true;
+    let enable_early_stop = false;
     let test_info = args.test_info.replace("\\n", "\n");
     let (total_blocks, trace_blocks, suspicious_blocks, suspicious_modules, localized_results) =
         run_llm_tracer(
