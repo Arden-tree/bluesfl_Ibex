@@ -419,6 +419,7 @@ pub async fn run_llm_tracer<P: AsRef<Path>, I: ToString>(
     );
     block_manager.dump_blocks_distribution("./")?;
     let total_token_usage = Arc::new(Mutex::new(Usage::default()));
+    let nav_agent_type = agent_type.clone();
     let (mod_checker, block_checker, block_reranker) =
         get_all_llm(agent_type, agent_mode.clone(), model, wave_path, total_token_usage.clone());
 
@@ -446,15 +447,23 @@ pub async fn run_llm_tracer<P: AsRef<Path>, I: ToString>(
         total_token_usage.clone(),
     );
     let total_blocks = get_total_blocks(&block_manager);
+
+    // Two-phase (paper Section 3.2-3.4):
+    // Phase 1: Pure Blues BFS (Algorithm 1) — no LLM
+    // Phase 2: LLM navigates pre-computed path via tool calls
     let trace_blocks = llm_tracer
-        .trace(
+        .run_phase1_bfs(
             start_scope,
             start_sig,
             Some(time),
             Some(time_bound),
             trace_limit,
-            prefix,
         )
+        .await;
+
+    let nav_model = get_model_handle(nav_agent_type, model);
+    llm_tracer
+        .run_phase2_navigate(&trace_blocks, nav_model, wave_path)
         .await;
 
     let suspicious_modules = llm_tracer.get_localized_modules();

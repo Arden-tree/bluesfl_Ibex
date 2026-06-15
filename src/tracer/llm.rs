@@ -5,7 +5,9 @@ use crate::block::Block;
 use crate::dataflow::NodeID;
 use crate::localizer::Localizer;
 use crate::slice::dynamic_slice::DynamicSlicing;
+use crate::tracer::navigate::{NavBlockInfo, NavState, NavReadValues, NavCheckSignals, NavAppendBlock, NavExit};
 use crate::tracer::{EarlyStop, TimeAnnotation};
+use crate::wave::mgr::WaveformManager;
 use crate::{
     top_k_items, BlockManager, BlockParser, BlockType, BugIDType, CoverageTracker,
     LocalizationChoiceBuilder, LocalizationResult, LocalizationResultBuilder, ModuleChecker,
@@ -14,8 +16,9 @@ use crate::{
 use async_trait::async_trait;
 use futures::executor::block_on;
 use log::{debug, error, info, trace, warn};
-use rig::completion::Usage;
-use std::collections::HashSet;
+use rig::client::completion::CompletionModelHandle;
+use rig::completion::{Prompt, Usage};
+use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc;
@@ -702,6 +705,144 @@ where
             .map(|(block, time)| (block.clone(), time.clone()))
             .collect::<Vec<_>>();
         port_blocks
+    }
+
+    /// Phase 1: Pure Blues BFS — no LLM. Constructs instruction execution path G.
+    pub async fn run_phase1_bfs(
+        &mut self,
+        scope_name: &str,
+        sig: &str,
+        time: Option<TimeAnnotation>,
+        time_bound: Option<TimeAnnotation>,
+        trace_limit: Option<usize>,
+    ) -> Vec<(T, Option<TimeAnnotation>)> {
+        info!("[Phase 1] Pure Blues BFS (no LLM)");
+        self.dynamic_tracer
+            .trace(scope_name, sig, time, time_bound, trace_limit, None)
+            .await
+    }
+
+    /// Phase 2: LLM navigates G via tool calls (paper Section 3.4).
+    /// Single continuous conversation — LLM chooses which blocks to inspect.
+    pub async fn run_phase2_navigate(
+        &mut self,
+        trace_blocks: &[(T, Option<TimeAnnotation>)],
+        model: CompletionModelHandle<'static>,
+        wave_path: &str,
+    ) {
+        use rig::agent::AgentBuilder;
+
+        // 1. Build navigation map
+        let mut nav_map: HashMap<String, NavBlockInfo> = HashMap::new();
+        for (block, time) in trace_blocks {
+            if !matches!(block.get_block_type(), BlockType::Assign | BlockType::Always(_)) {
+                continue;
+            }
+            let module = block.get_module_name().to_string();
+            let scope: Vec<String> = block.get_scope().split('.').map(|s| s.to_string()).collect();
+            let code = block.get_ctx().join("\n");
+            let bid = block.get_bid();
+            let t = time.unwrap_or(0);
+            let signals: Vec<(String, i64)> = block
+                .get_suspicious_trace()
+                .map(|st| st.1.iter().map(|(n, t)| (n.get_text().to_string(), t.unwrap_or(0))).collect())
+                .unwrap_or_default();
+            let info = NavBlockInfo { module, scope, code, signals: signals.clone(), bid };
+            for (sig_name, _) in &signals {
+                nav_map.entry(sig_name.clone()).or_insert(info.clone());
+            }
+            if let Some(st) = block.get_suspicious_trace() {
+                nav_map.entry(st.0.get_text().to_string()).or_insert(info);
+            }
+        }
+        info!("[Phase 2] Nav map: {} signals from {} blocks", nav_map.len(), trace_blocks.len());
+
+        // 2. Find start block
+        let start = match trace_blocks.iter().find(|(b, _)| {
+            matches!(b.get_block_type(), BlockType::Assign | BlockType::Always(_))
+        }) {
+            Some((b, t)) => NavBlockInfo {
+                module: b.get_module_name().to_string(),
+                scope: b.get_scope().split('.').map(|s| s.to_string()).collect(),
+                code: b.get_ctx().join("\n"),
+                signals: b.get_suspicious_trace()
+                    .map(|st| st.1.iter().map(|(n, t)| (n.get_text().to_string(), t.unwrap_or(0))).collect())
+                    .unwrap_or_default(),
+                bid: b.get_bid(),
+            },
+            None => {
+                warn!("[Phase 2] No Assign/Always blocks in trace");
+                return;
+            }
+        };
+
+        // 3. Create state
+        let state = Arc::new(Mutex::new(NavState {
+            nav_map,
+            current: start.clone(),
+            waveform_mgr: WaveformManager::new(wave_path),
+            suspicious: Vec::new(),
+            done: false,
+        }));
+
+        // 4. System prompt
+        let system_prompt = format!(
+            r#"You are a debugging assistant for a RISC-V microprocessor design team.
+Your task is to trace backward through the instruction execution path to find the root cause of a fault.
+
+# Simulation fault information
+{}
+
+# Current code block (module: {})
+{}
+
+# Driven signals (with timestamps)
+{:?}
+
+Use tools to:
+1. read_values: Read signal values from waveform at specific times.
+2. check_signals: Navigate backward to blocks driving suspicious signals.
+3. append_block: Mark current block as the root cause.
+4. exit: End analysis.
+
+Start by reading driven signal values, then trace suspicious signals backward."#,
+            self.test_info, start.module, start.code, start.signals
+        );
+
+        // 5. Build agent + run
+        let agent = AgentBuilder::new(model)
+            .preamble(&system_prompt)
+            .temperature(0.0)
+            .tool(NavReadValues::new(state.clone()))
+            .tool(NavCheckSignals::new(state.clone()))
+            .tool(NavAppendBlock::new(state.clone()))
+            .tool(NavExit::new(state.clone()))
+            .build();
+
+        let prompt = format!("Analyze module {} for the root cause. Read signal values, trace backward, call exit when done.", start.module);
+        info!("[Phase 2] Starting LLM navigation from {}", start.module);
+
+        match agent.prompt(&prompt).multi_turn(50).extended_details().await {
+            Ok(resp) => {
+                if let Ok(mut usage) = self.total_token_cost.lock() {
+                    *usage += resp.total_usage;
+                }
+                info!("[Phase 2] Done: {}", resp.output);
+            }
+            Err(e) => warn!("[Phase 2] Error: {}", e),
+        }
+
+        // 6. Collect suspicious
+        let s = state.lock().unwrap();
+        for (module, bid) in &s.suspicious {
+            warn!("[Phase 2] Suspicious: {} (bid={})", module, bid);
+            if let Some((block, time)) = trace_blocks.iter().find(|(b, _)| b.get_bid() == *bid) {
+                if let Some(st) = block.get_suspicious_trace() {
+                    self.add_suspicious_block((st.0.clone(), *time), block.clone());
+                }
+            }
+        }
+        info!("[Phase 2] {} suspicious blocks found", s.suspicious.len());
     }
 }
 
