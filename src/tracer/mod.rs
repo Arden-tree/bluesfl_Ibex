@@ -44,11 +44,9 @@ where
 {
     fn get_scope_blocks(&self, scope_name: &str) -> anyhow::Result<&[T]>;
     fn get_scopes(&self) -> Vec<&str>;
+    fn reset_visit_tracking(&mut self) {}
     // get current block covered ast lines (ast_lineno, count)
     fn get_block_covered_ast_lines(&self, block: &T, time: TimeAnnotation) -> Vec<(u32, usize)>;
-    /// Reset per-block visit tracking. Called before each get_driven_signals_fixpoint
-    /// to prevent mega-AssignBlock visited entries from blocking later signals.
-    fn reset_visit_tracking(&mut self) {}
     fn get_next_scopes(&self, scope_name: &str) -> Vec<&str> {
         self.get_scopes()
             .iter()
@@ -274,8 +272,6 @@ where
         // while cur_scope is the parent (e.g., ...backend). Only assert for
         // Always/Assign blocks which should always match.
         if matches!(block.get_block_type(), BlockType::Always(_) | BlockType::Assign) {
-            // Allow block scope to be an ancestor of cur_scope (signals can
-            // cross module boundaries upward in hierarchical designs)
             let bs = block.get_scope();
             assert!(
                 bs == cur_scope || cur_scope.starts_with(&format!("{}.", bs)),
@@ -286,26 +282,44 @@ where
         let btype = block.get_block_type();
         let (next_time, vars) = match btype.clone() {
             BlockType::Always(_) | BlockType::Assign => {
-                // Paper alignment (Algorithm 1 line 13): DataflowAnalysis(s, b, t)
-                // returns DIRECT input signals driving s — NOT transitive closure.
-                // The BFS traces each signal independently in subsequent iterations.
-                // Previous fixpoint loop caused explosion in mega-AssignBlocks
-                // (all assigns merged into one bid → cascading deps).
+                // reach always fix point:
+                // 1. COMB: needs reach fix point
+                //  a = b;
+                //  c = a;
+                //  if we trace `c`, we need to get [`a`, `b`]
+                // 2. SEQ: no need fix point
+                //  a@t <= b@t-1;
+                //  c@t <= a@t-1;
+                //  if we trace `c`, only `a`@(t-1) is required; `a`@t is not same with `a`@(t-1)
+                let mut res = HashSet::new();
                 let (next_time, vars) =
                     self.get_driven_signals_in_block(block, btype, sig.clone(), time);
                 if vars.is_none() {
                     (next_time, None)
                 } else {
                     let vars = vars.unwrap();
-                    let res: HashSet<NodeID> = vars.into_iter().collect();
-
-                    // SEQ cross-module fallback only (no COMB fixpoint)
+                    res.extend(vars);
                     let mut cross_module_deps: Vec<NodeID> = Vec::new();
-                    if matches!(btype, BlockType::Always(CircuitType::SEQ)) {
+                    loop {
+                        let len = res.len();
+                        let mut tmp = vec![];
                         for v in &res {
-                            let (_, v_vars) =
+                            let (v_next_time, vars) =
                                 self.get_driven_signals_in_block(block, btype, v.clone(), time);
-                            if v_vars.is_none() {
+                            if let Some(vars) = vars {
+                                if v_next_time == time {
+                                    tmp.extend(vars);
+                                }
+                            } else if matches!(btype, BlockType::Always(CircuitType::SEQ)) {
+                                // Cross-module fallback for Chisel-generated pipeline registers:
+                                // When a SEQ block's driven signal is a cross-module wire
+                                // (e.g., _exu_io_out_bits_commits_0), search child scopes for
+                                // ModuleOutput blocks that produce this wire.
+                                // ModuleOutput.output_nodes = parent-side wire names
+                                // ModuleOutput.input_nodes = child-side port names
+                                // These cross-module signals go to a separate set — they cannot
+                                // be resolved within the current block's fixpoint, but should be
+                                // returned for the outer trace loop to resolve via get_block_result.
                                 for next_scope in self.get_next_scopes(block.get_scope()) {
                                     if let Ok(sub_blocks) = self.get_scope_blocks(next_scope) {
                                         for b in sub_blocks {
@@ -324,18 +338,33 @@ where
                                 }
                             }
                         }
+                        res.extend(tmp);
+                        if res.len() == len {
+                            break;
+                        }
                     }
+                    let vars: Vec<_> = res.into_iter().collect();
+                    // vars.sort_by(|a, b| a.cmp(b));
 
-                    // Only filter out the traced signal itself (avoid self-loop).
-                    // Without fixpoint, direct deps that happen to be LHS of other
-                    // assigns in the mega-AssignBlock must NOT be filtered — the BFS
-                    // traces them independently.
-                    let sig_text = sig.get_text();
-                    let mut vars: Vec<_> = res
+                    // FIX: After reaching fixpoint, remove vars that contains in left-hand of current block.
+                    let mut vars = vars
                         .into_iter()
-                        .filter(|v| v.get_text() != sig_text)
-                        .collect();
+                        // FIXME: there may be a bug. I found that some vars in fixpoint not exist in output_nodes.
+                        .filter(|v| {
+                            block
+                                .get_output_nodes()
+                                .iter()
+                                // Here use text compare may remove some right-values.
+                                .all(|ov| ov.get_text() != v.get_text())
+                        })
+                        .collect::<Vec<_>>();
+                    // Append cross-module deps from SEQ fallback (resolved via ModuleOutput blocks).
+                    // These are child-scope signal names that the outer trace loop should resolve
+                    // through get_block_result(), not through fixpoint iteration.
                     if !cross_module_deps.is_empty() {
+                        warn!("SEQ cross-module: added {} deps to fixpoint result: {:?}",
+                            cross_module_deps.len(),
+                            cross_module_deps.iter().map(|n| n.get_text()).collect::<Vec<_>>());
                         vars.extend(cross_module_deps);
                     }
                     (next_time, Some(vars))
@@ -377,9 +406,7 @@ where
 
         let next_scope = if matches!(block.get_block_type(), BlockType::ModuleInput) {
             // ModuleInput: signal goes from parent to child.
-            // Use the block's scope (where the port is declared), not cur_scope
-            // (where the BFS is searching). The port might be declared in a
-            // parent of cur_scope, so we need the parent of block's scope.
+            // Use block's scope (where port is declared), not cur_scope (BFS search scope).
             let port_scope = block.get_scope();
             if let Some(last_scope) = get_last_scope(port_scope) {
                 last_scope
@@ -528,7 +555,6 @@ where
                         .get_driven_signals_fixpoint(block, &cur_scope, cur_time, &head_sig)
                         .await
                     {
-                        // Paper alignment (Algorithm 1): dedup by signal text name,
                         next_vars_with_time.iter().for_each(|(node, next_time)| {
                             debug!(
                                 "line: {}, name: {}, time: {:?}",
