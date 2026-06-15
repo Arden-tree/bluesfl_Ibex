@@ -1,0 +1,11 @@
+--- rtl/ibex_alu.sv.golden	2026-06-12 15:33:26.557352330 +0800
++++ rtl/ibex_alu.sv	2026-06-12 15:33:26.563352193 +0800
+@@ -102,7 +102,7 @@
+   end
+ 
+   // actual adder
+-  assign adder_result_ext_o = $unsigned(adder_in_a) + $unsigned(adder_in_b);
++  assign adder_result_ext_o = $unsigned(adder_in_a) - $unsigned(adder_in_b);
+ 
+   assign adder_result       = adder_result_ext_o[32:1];
+ 

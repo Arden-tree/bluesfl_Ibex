@@ -1,0 +1,7 @@
+{
+  "start_scope": "TOP.ibex_simple_system.u_top.u_ibex_top.u_ibex_core",
+  "start_sig": "pc_id",
+  "start_time": 19,
+  "test_info": "Now this core design is buggy when executing the instruction:\n j       pc + 0x9f38 \nAfter executing this instruction, this core jumps to a wrong address 0x000f6148 which should jump to address 0x00109fb8\n\n\nINSTRUCTION TRACE CONTEXT:\n    [ 0] Core 0: PC=0x00100080 (0x7390906f) j       pc + 0x9f38\n>>> [ 1] Core 0: PC=0x00109fb8 (0x00000093) li      ra, 0\n\n",
+  "time_bound": 11
+}
