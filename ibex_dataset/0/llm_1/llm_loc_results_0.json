@@ -1,0 +1,17 @@
+{
+  "bug_id": "0",
+  "token_usage": {
+    "input_tokens": 57037,
+    "output_tokens": 4138,
+    "total_tokens": 61175
+  },
+  "token_price": null,
+  "choices": [
+    {
+      "module_name": "ibex_alu",
+      "line_number": null,
+      "block_id": 1361,
+      "score": 1.0
+    }
+  ]
+}

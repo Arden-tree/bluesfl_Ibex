@@ -755,7 +755,7 @@ where
                 nav_map.entry(st.0.get_text().to_string()).or_insert(info);
             }
         }
-        info!("[Phase 2] Nav map: {} signals from {} blocks", nav_map.len(), trace_blocks.len());
+        warn!("[Phase 2] Nav map: {} signals from {} trace blocks", nav_map.len(), trace_blocks.len());
 
         // 2. Find start block
         let start = match trace_blocks.iter().find(|(b, _)| {
@@ -776,7 +776,10 @@ where
             }
         };
 
-        // 3. Create state
+        // 3. Extract available signals BEFORE moving nav_map into state
+        let avail_signals: Vec<String> = nav_map.keys().take(50).cloned().collect();
+
+        // 4. Create state
         let state = Arc::new(Mutex::new(NavState {
             nav_map,
             current: start.clone(),
@@ -785,7 +788,7 @@ where
             done: false,
         }));
 
-        // 4. System prompt
+        // 5. System prompt
         let system_prompt = format!(
             r#"You are a debugging assistant for a RISC-V microprocessor design team.
 Your task is to trace backward through the instruction execution path to find the root cause of a fault.
@@ -799,14 +802,17 @@ Your task is to trace backward through the instruction execution path to find th
 # Driven signals (with timestamps)
 {:?}
 
+# Available signals for check_signals (trace backward)
+{:?}
+
 Use tools to:
 1. read_values: Read signal values from waveform at specific times.
-2. check_signals: Navigate backward to blocks driving suspicious signals.
+2. check_signals: Navigate backward to blocks driving suspicious signals. Use signal names from "Available signals" or "Driven signals".
 3. append_block: Mark current block as the root cause.
 4. exit: End analysis.
 
-Start by reading driven signal values, then trace suspicious signals backward."#,
-            self.test_info, start.module, start.code, start.signals
+Start by reading driven signal values. If a signal carries the wrong value, use check_signals to trace it backward. Continue until you find the root cause."#,
+            self.test_info, start.module, start.code, start.signals, avail_signals.iter().take(50).collect::<Vec<_>>()
         );
 
         // 5. Build agent + run
@@ -822,7 +828,7 @@ Start by reading driven signal values, then trace suspicious signals backward."#
         let prompt = format!("Analyze module {} for the root cause. Read signal values, trace backward, call exit when done.", start.module);
         info!("[Phase 2] Starting LLM navigation from {}", start.module);
 
-        match agent.prompt(&prompt).multi_turn(50).extended_details().await {
+        match agent.prompt(&prompt).multi_turn(100).extended_details().await {
             Ok(resp) => {
                 if let Ok(mut usage) = self.total_token_cost.lock() {
                     *usage += resp.total_usage;
