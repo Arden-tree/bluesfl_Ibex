@@ -501,22 +501,104 @@ where
             .await;
 
         if suspicious_vars.is_none() {
-            // Paper alignment (Section 3.4): Blues constructs the full
-            // instruction execution path via pure dataflow BFS (Algorithm 1).
-            // The LLM's terminate decision only means "done inspecting this
-            // block" — it does NOT stop the path construction. Always continue
-            // dataflow tracing so the LLM can inspect deeper blocks (e.g.,
-            // tracing from fetch → ALU as in paper Figure 6).
-            res
+            // Terminate
+            // dive
+            trace!(
+                "[DIVE] block {} in module {}, suspicious vars: {:?}@{:?}",
+                block.get_bid(),
+                block.get_module_name(),
+                sig,
+                time,
+            );
+            let early_stop = if self.early_stop {
+                EarlyStop::Block
+            } else {
+                EarlyStop::None
+            };
+            res.map(|(next_scope, next_vars, _early_stop)| (next_scope, next_vars, early_stop))
         } else {
-            // Paper alignment: Algorithm 1 traces ALL dataflow signals.
-            // The LLM's signal selection (not_dive) only marks which signals
-            // it finds suspicious — it does NOT replace the dataflow tracing.
-            // Without this, important data signals (e.g., instr_addr_d in FIFO)
-            // get dropped when the LLM selects control signals instead.
-            // The LLM's suspicious block marking is already handled in
-            // llm_voting_for_blocks() above.
-            res
+            // not dive
+            trace!(
+                "[NOT DIVE] block {} in module {}, suspicious vars: {:?}@{:?} -> {:?}",
+                block.get_bid(),
+                block.get_module_name(),
+                sig,
+                time,
+                suspicious_vars
+            );
+            let suspicious_vars = suspicious_vars.map(|vars| {
+                vars.into_iter()
+                    .map(|(node, t)| (node, Some(t)))
+                    .collect::<Vec<_>>()
+            });
+
+            // When LLM returns variables that are ModuleInput ports of the current scope,
+            // map them through port_connections to parent scope signals. This enables
+            // cross-module tracing (e.g., WBU input → Backend pipeline register → EXU output).
+            let mapped_vars = suspicious_vars.as_ref().and_then(|vars| {
+                warn!("LLM: checking ModuleInput mapping for {} vars in scope={}", vars.len(), next_scope);
+                let scope_blocks = match self.get_scope_blocks(cur_scope) {
+                    Ok(b) => b,
+                    Err(e) => { warn!("LLM: get_scope_blocks failed: {}", e); return None; }
+                };
+                let input_blocks: Vec<_> = scope_blocks
+                    .iter()
+                    .filter(|b| matches!(b.get_block_type(), BlockType::ModuleInput))
+                    .collect();
+                warn!("LLM: found {} ModuleInput blocks in scope {}", input_blocks.len(), cur_scope);
+                if input_blocks.is_empty() {
+                    return None;
+                }
+                // Debug: log first few input block output names
+                for (i, ib) in input_blocks.iter().take(5).enumerate() {
+                    let out_names: Vec<&str> = ib.get_output_nodes().iter().take(3).map(|n| n.get_text()).collect();
+                    warn!("LLM: ModuleInput block[{}] bid={} outputs={:?}", i, ib.get_bid(), out_names);
+                }
+                let mut mapped = Vec::new();
+                let mut any_mapped = false;
+                for (node, t) in vars {
+                    let node_text = node.get_text();
+                    let mut found = false;
+                    for ib in &input_blocks {
+                        // Check if this ModuleInput block's output node matches the LLM signal
+                        if ib.get_output_nodes().iter().any(|on| on.get_text() == node_text) {
+                            // Map through dataflow: ModuleInput output → parent scope input signals
+                            let parent_vars: Vec<_> = ib.get_input_nodes()
+                                .into_iter()
+                                .cloned()
+                                .map(|pn| (pn, t.clone()))
+                                .collect();
+                            if !parent_vars.is_empty() {
+                                mapped.extend(parent_vars);
+                                found = true;
+                                any_mapped = true;
+                            }
+                        }
+                    }
+                    if !found {
+                        mapped.push((node.clone(), t.clone()));
+                    }
+                }
+                if any_mapped {
+                    // Jump to parent scope for the mapped signals
+                    let parent_scope = crate::tracer::get_last_scope(next_scope)
+                        .unwrap_or(next_scope)
+                        .to_string();
+                    warn!(
+                        "LLM: mapped {} vars through ModuleInput ports, jumping to parent scope={}",
+                        mapped.len(), parent_scope
+                    );
+                    Some((parent_scope, mapped))
+                } else {
+                    None
+                }
+            });
+
+            if let Some((parent_scope, mapped_vars)) = mapped_vars {
+                Some((parent_scope, Some(mapped_vars), EarlyStop::None))
+            } else {
+                Some((next_scope.to_string(), suspicious_vars, EarlyStop::None))
+            }
         }
     }
 
@@ -620,140 +702,6 @@ where
             .map(|(block, time)| (block.clone(), time.clone()))
             .collect::<Vec<_>>();
         port_blocks
-    }
-}
-
-impl<'a, 'b, Parser, CT, MC, BC, BR, T>
-    LLMAidTracer<'a, 'b, Parser, CT, MC, BC, BR, T>
-where
-    T: Block<'a> + Sync + Send + Debug + 'static,
-    Parser: BlockParser<Block<'a> = T>,
-    CT: CoverageTracker + Send + Sync,
-    MC: ModuleChecker + Send + 'static,
-    BC: BlockChecker<'a, Parser::Block<'a>> + Send + 'static,
-    BR: BlockReranker<'a, Parser::Block<'a>> + Send + 'static,
-{
-    /// Phase 1: Pure Blues BFS (Algorithm 1) — builds instruction execution
-    /// path without any LLM calls. Uses DynamicSlicing directly.
-    pub async fn run_phase1_bfs(
-        &mut self,
-        scope_name: &str,
-        sig: &str,
-        time: Option<TimeAnnotation>,
-        time_bound: Option<TimeAnnotation>,
-        trace_limit: Option<usize>,
-    ) -> Vec<(T, Option<TimeAnnotation>)> {
-        info!("[Phase 1] Starting pure Blues BFS (no LLM)");
-        let trace = self
-            .dynamic_tracer
-            .trace(scope_name, sig, time, time_bound, trace_limit, None)
-            .await;
-        info!(
-            "[Phase 1] BFS complete: {} blocks in instruction execution path",
-            trace.len()
-        );
-        trace
-    }
-
-    /// Phase 2: LLM navigates the pre-computed instruction execution path.
-    /// For each Assign/Always block, the LLM evaluates code context +
-    /// signal values and marks suspicious blocks.
-    pub async fn run_phase2_llm(&mut self, trace_blocks: &[(T, Option<TimeAnnotation>)]) {
-        info!(
-            "[Phase 2] Starting LLM navigation over {} trace blocks",
-            trace_blocks.len()
-        );
-        let assign_always_count = trace_blocks
-            .iter()
-            .filter(|(b, _)| {
-                matches!(
-                    b.get_block_type(),
-                    BlockType::Assign | BlockType::Always(_)
-                )
-            })
-            .count();
-        info!(
-            "[Phase 2] {} Assign/Always blocks to evaluate (ModuleOutput skipped)",
-            assign_always_count
-        );
-
-        for (block, time) in trace_blocks {
-            let btype = block.get_block_type();
-            if !matches!(btype, BlockType::Assign | BlockType::Always(_)) {
-                continue;
-            }
-
-            // Extract signal + dataflow from Phase 1 trace info
-            let (sig, df_vars) = match block.get_suspicious_trace() {
-                Some(trace) => (trace.0.clone(), trace.1.clone()),
-                None => {
-                    warn!(
-                        "[Phase 2] Block {} has no suspicious_trace, skipping",
-                        block.get_bid()
-                    );
-                    continue;
-                }
-            };
-
-            let cur_scope = block.get_scope();
-            let t = time.unwrap_or(0);
-
-            // Get dataflow from dynamic tracer (pure, no LLM)
-            let (_, next_vars) = {
-                let old = self.dynamic_tracer.pos_visited.clone();
-                let result = self
-                    .dynamic_tracer
-                    .get_driven_signals_in_block(
-                        block,
-                        btype,
-                        sig.clone(),
-                        *time,
-                    );
-                self.dynamic_tracer.pos_visited = old;
-                result
-            };
-
-            let sig_dataflow_vars = next_vars
-                .unwrap_or_default()
-                .into_iter()
-                .map(|n| (n, Some(t)))
-                .collect::<Vec<_>>();
-
-            // Build port_blocks for LLM context
-            let local_trace = self.get_local_trace(block, &sig, *time).await;
-            let port_blocks = self
-                .filter_input_ports_from_trace(cur_scope, &local_trace)
-                .iter()
-                .flat_map(|(b, t)| {
-                    b.get_output_nodes()
-                        .into_iter()
-                        .map(|n| (n.clone(), t.clone()))
-                })
-                .collect::<Vec<_>>();
-
-            // LLM evaluation — marks suspicious blocks as side effect
-            warn!(
-                "[Phase 2] Evaluating block {} (module={}, sig={}, time={:?})",
-                block.get_bid(),
-                block.get_module_name(),
-                sig.get_text(),
-                time
-            );
-            let _ = self
-                .llm_voting_for_blocks(
-                    block,
-                    &port_blocks,
-                    &sig_dataflow_vars,
-                    &sig,
-                    *time,
-                )
-                .await;
-        }
-
-        info!(
-            "[Phase 2] Complete: {} suspicious blocks identified",
-            self.suspicious_blocks.len()
-        );
     }
 }
 
