@@ -7,6 +7,7 @@ use std::collections::{HashSet, VecDeque};
 use std::fmt::{Debug, Formatter};
 
 pub mod llm;
+pub mod navigate;
 pub mod slice;
 mod utils;
 use crate::dataflow::NodeID;
