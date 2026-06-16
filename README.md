@@ -257,11 +257,17 @@ ibex_cycle   = 2 × time_step = 4
 time_bound   = start_time - 2 × ibex_cycle = 19 - 8 = 11
 ```
 
-4. 根据 mismatch 类型选择起始信号：
+4. 确定起始信号 `sig`：
 
-| Mismatch 类型 | start_sig | 说明 |
-|---------------|-----------|------|
-| PC 不匹配 | `rvfi_pc_wdata` | 论文 Figure 6 使用的信号 |
+论文 Section 2.1 描述：co-simulation 在每条指令 commit 时比对 DUT（RTL）和参考模型（Spike ISS）的架构状态。当某个信号 `sig` 的值在两侧不一致时，这个信号就是测试报告中的起始信号。Algorithm 1 拿这个 `sig` 作为 BFS 反向追踪的起点。
+
+Figure 6 示例：cosim 比对发现 PC 值不一致（DUT 为 0x000f5fc0，ISS 为 0x0010a140），检测到不一致的信号是 `rvfi_pc_wdata` → `sig = rvfi_pc_wdata`。
+
+本框架中 `test_analysis` 根据 cosim 报告的 mismatch 类型确定 `sig`：
+
+| Mismatch 类型 | sig | 说明 |
+|---------------|-----|------|
+| PC 不匹配 | `rvfi_pc_wdata` | 论文 Figure 6 |
 | 写使能不匹配 | `rvfi_rd_addr_d` | — |
 | 写数据不匹配 | `rvfi_rd_wdata_d` | — |
 
