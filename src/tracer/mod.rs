@@ -347,15 +347,12 @@ where
                     let vars: Vec<_> = res.into_iter().collect();
                     // vars.sort_by(|a, b| a.cmp(b));
 
-                    // FIX: After reaching fixpoint, remove vars that contains in left-hand of current block.
                     let mut vars = vars
                         .into_iter()
-                        // FIXME: there may be a bug. I found that some vars in fixpoint not exist in output_nodes.
                         .filter(|v| {
                             block
                                 .get_output_nodes()
                                 .iter()
-                                // Here use text compare may remove some right-values.
                                 .all(|ov| ov.get_text() != v.get_text())
                         })
                         .collect::<Vec<_>>();
