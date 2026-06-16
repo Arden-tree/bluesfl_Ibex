@@ -117,16 +117,8 @@ where
         // - SEQ:  coverage check at time t-1, propagate driven signals at time t-1
         //         if not covered at t-1 → register holds value, return ({sig}, t-1)
 
-        // Compute next_time FIRST (needed for coverage check)
-        let next_time = if matches!(btype, BlockType::Always(CircuitType::SEQ)) {
-            Some(time.unwrap() - self.time_step)  // t-1 for SEQ
-        } else {
-            time  // t for COMB/Assign
-        };
-
         // FIXME: only when a sig exist, we maintain it and repeat use sig@t-1. If this circuit not exist, we should ignore it.
         let covered_lines = if matches!(btype, BlockType::Assign) {
-            // For Assign blocks, all lines are considered covered (no coverage data needed)
             block
                 .get_covered_line_locates()
                 .into_par_iter()
@@ -137,7 +129,6 @@ where
                 .get_covered_line_locates()
                 .into_par_iter()
                 .map(|locate| {
-                    // TODO: convert lineno in AST to original lineno
                     let ast_locate = Locate {
                         offset: locate.offset,
                         len: locate.len,
@@ -151,22 +142,15 @@ where
                             ast_locate,
                         )
                         .unwrap();
-                    (
-                        // (ast line will be used in following node location,
-                        locate.line,
-                        // original lineno will be used to check line coverage)
-                        lineno as u32,
-                    )
+                    (locate.line, lineno as u32)
                 })
                 .filter_map(|(lineno, original_lineno)| {
-                    // Paper-aligned: check coverage at next_time
-                    // COMB: next_time = t (same time), SEQ: next_time = t-1
                     self.coverage_tracker
                         .check_line_covered(
                             Some(btype.clone()),
                             Some(block.get_scope()),
                             Some(block.get_module_name()),
-                            next_time,
+                            time,
                             original_lineno,
                         )
                         .map(|count| (lineno, count))
@@ -174,16 +158,11 @@ where
                 .collect::<Vec<_>>()
         };
 
-        // sig locate may not in this block
-
         // find which output node that has the same name with `sig` is covered
         let local_sigs = block
             .get_output_nodes()
             .into_iter()
             .filter(|&node| node.get_text() == sig.get_text())
-            // In fact, here should be only one position is covered.
-            // but for parameter controlled context, we cannot know which one is actually covered.
-            // so we use filter to collect all, and consider them are covered;
             .filter(|&node| {
                 covered_lines
                     .iter()
@@ -191,20 +170,21 @@ where
             })
             .collect::<Vec<_>>();
 
+        let mut next_time = time;
+        if matches!(btype, BlockType::Always(CircuitType::SEQ)) {
+            next_time = Some(time.unwrap() - self.time_step);
+        }
+
         let vars = if local_sigs.is_empty() && !covered_lines.is_empty() {
-            // Only when this line is really instantiated in the final circuit
             Some(if matches!(btype, BlockType::Always(CircuitType::SEQ)) {
-                // for seq, no local sig is covered, return sig again
                 vec![sig.clone()]
             } else {
-                // for comb, no local sig is covered, return empty
                 vec![]
             })
         } else {
             let res = local_sigs
                 .into_iter()
                 .map(|node| {
-                    // (bid, node line) can only be visited for one time;
                     let key = (block.get_bid(), node.clone());
                     let is_first_visit = self
                         .pos_visited
@@ -227,41 +207,6 @@ where
             } else {
                 Some(res.into_iter().filter_map(|v| v).flatten().collect())
             }
-        };
-
-        // Fallback for Always(SEQ): when coverage data is missing, pipeline
-        // registers still have deterministic dataflow (reg <= wire).
-        // Ignore coverage and do a pure dataflow lookup.
-        let vars = if vars.is_none() && matches!(btype, BlockType::Always(CircuitType::SEQ)) {
-            let direct_deps: Vec<NodeID> = block
-                .get_output_nodes()
-                .into_iter()
-                .filter(|node| node.get_text() == sig.get_text())
-                .flat_map(|node| block.get_node_dataflow(node.clone()).into_iter())
-                .filter(|node| matches!(node, NodeID::Identifier(_, _)))
-                .collect();
-            if direct_deps.is_empty() {
-                warn!("SEQ fallback: no dataflow deps for sig='{}'", sig.get_text());
-                None
-            } else {
-                // Filter out control/perf signals — they cause tracing to diverge.
-                // Pipeline registers should trace data, not control or perf counters.
-                let filtered: Vec<NodeID> = direct_deps.iter().filter(|dep| {
-                    let t = dep.get_text();
-                    !t.ends_with("_valid") && !t.ends_with("_ready")
-                        && t != "valid" && t != "ready"
-                        && !t.contains("perfCnt") && !t.contains("perfCntCond")
-                        && !t.contains("perfCntCond_") && !t.starts_with("_GEN")
-                        && !t.ends_with("__bore")
-                }).cloned().collect();
-                let chosen = if filtered.is_empty() { direct_deps.clone() } else { filtered };
-                warn!("SEQ fallback: found {} deps for sig='{}', selected {}: {:?}",
-                    direct_deps.len(), sig.get_text(), chosen.len(),
-                    chosen.iter().map(|n| n.get_text()).collect::<Vec<_>>());
-                Some(chosen)
-            }
-        } else {
-            vars
         };
 
         (next_time, vars)

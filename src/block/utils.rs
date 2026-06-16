@@ -245,6 +245,30 @@ pub fn get_left_values_in_assignment(ref_node: RefNode) -> Vec<RefNode> {
 }
 
 pub fn get_right_values_in_expression(ref_node: RefNode) -> Vec<RefNode> {
+    // Access RHS Expression directly from the assignment node structure.
+    // This avoids a bug where the first Expression in DFS traversal is the
+    // Lvalue index (e.g., `arr[i]`) instead of the RHS, causing the RHS
+    // identifiers to be missed.
+    match ref_node {
+        RefNode::NonblockingAssignment(stmt) => {
+            // nodes: (VariableLvalue, Symbol, Option<DelayOrEventControl>, Expression)
+            return get_identifiers_from_expression(&stmt.nodes.3);
+        }
+        RefNode::BlockingAssignment(stmt) => {
+            use sv_parser::BlockingAssignment;
+            match stmt {
+                BlockingAssignment::Variable(var) => {
+                    return get_identifiers_from_expression(&var.nodes.3);
+                }
+                BlockingAssignment::OperatorAssignment(op) => {
+                    return get_identifiers_from_expression(&op.nodes.2);
+                }
+                _ => {}
+            }
+        }
+        _ => {}
+    }
+    // Fallback for other node types
     let mut res = vec![];
     for rvalue_ref_node in ref_node {
         if let RefNode::Expression(expr) = rvalue_ref_node {
