@@ -92,7 +92,8 @@ def quick_build(ibex_dir, sv_file):
         "--coverage",
         "-CFLAGS", f"-std=c++17 -Wall -DVL_USER_STOP -DVM_TRACE_FMT_FST -DVM_COVERAGE=1 -DTOPLEVEL_NAME=ibex_simple_system -g {cflags}",
         "-LDFLAGS", f"-pthread -lutil -lelf {ldflags}",
-        "-Wall", "--unroll-count", "72", "--build", "-j", str(os.cpu_count() or 4),
+        "-Wall", "-Wno-fatal",
+        "--unroll-count", "72", "--build", "-j", str(os.cpu_count() or 4),
     ]
     log_file = simdir / "verilator_build.log"
     rc = run_nobuf(cmd, cwd=simdir, env=env, timeout=600,
@@ -144,7 +145,8 @@ def phase_compile(bugs, cfg):
                 os.remove(f)
             r = run(["./Vibex_simple_system",
                      "--meminit=ram,../../../examples/sw/benchmarks/coremark/coremark.elf",
-                     "-t", "--cov-start", "1", "--cov-end", "999999", "--cov-dir", "."],
+                     "-t", "-c", "3000",
+                     "--cov-start", "1", "--cov-end", "999999", "--cov-dir", "."],
                     cwd=simdir, timeout=600)
             (out_dir / "mismatch_log.txt").write_text(r.stdout + (r.stderr or ""))
 
@@ -202,8 +204,9 @@ def phase_analyze(bugs, cfg):
             continue
 
         if (out_dir / "no_mismatch").exists():
-            logger.info(f"[{i+1}/{len(bugs)}] {name} 跳过（无 mismatch）")
-            results.append({"bug": name, "status": "no_mismatch", "oracle": oracle["module_name"]})
+            logger.info(f"[{i+1}/{len(bugs)}] {name} ❌ 未命中（不能触发 mismatch）")
+            results.append({"bug": name, "status": "no_mismatch", "oracle": oracle["module_name"],
+                          "detail": "不能触发 mismatch，BluesFL 无法检测"})
             continue
 
         logger.info(f"[{i+1}/{len(bugs)}] {name} (oracle: {oracle['module_name']})")
@@ -269,7 +272,7 @@ def phase_analyze(bugs, cfg):
 
             logger.info("  sv_analysis...")
             log_path = str(llm_dir / "sv_analysis.log")
-            run_nobuf(cmd, cwd=ibex, env=env, timeout=600,
+            run_nobuf(cmd, cwd=ibex, env=env, timeout=1200,
                       _stdout_file=log_path, _stderr_file=log_path)
 
             # 评测
@@ -300,14 +303,44 @@ def phase_analyze(bugs, cfg):
     # 汇总
     total = len(results)
     hits = [r for r in results if r["status"] == "hit"]
+    misses = [r for r in results if r["status"] == "miss"]
+    no_mismatch = [r for r in results if r["status"] == "no_mismatch"]
+    errors = [r for r in results if r["status"] not in ("hit", "miss", "no_mismatch")]
+    tested = len(hits) + len(misses)  # 能触发 mismatch 的 bug 数
+
     top1 = sum(1 for r in hits if r.get("rank", 99) == 1)
     top5 = len(hits)
-    logger.info(f"\n{'='*50}")
-    logger.info(f"总计: {total}, Top-1: {top1}, Top-5: {top5}")
+
+    logger.info(f"\n{'='*60}")
+    logger.info(f"总计: {total} bugs")
+    logger.info(f"  能触发 mismatch: {tested} (Top-1: {top1}, Top-5: {top5})")
+    logger.info(f"  不能触发 mismatch: {len(no_mismatch)} (BluesFL 无法检测)")
+    logger.info(f"  其他错误: {len(errors)}")
+    if tested > 0:
+        logger.info(f"  Top-1 命中率: {top1}/{tested} = {top1/tested*100:.1f}%")
+        logger.info(f"  Top-5 命中率: {top5}/{tested} = {top5/tested*100:.1f}%")
+    logger.info(f"{'='*60}")
+    logger.info(f"明细:")
     for r in results:
-        tag = "✅" if r["status"] == "hit" else "❌"
-        logger.info(f"  {tag} {r['bug']}: oracle={r['oracle']}, status={r['status']}")
-    summary = {"total": total, "top1": top1, "top5": top5, "results": results}
+        if r["status"] == "hit":
+            logger.info(f"  ✅ {r['bug']}: oracle={r['oracle']}, Top-{r.get('rank',1)}")
+        elif r["status"] == "miss":
+            logger.info(f"  ❌ {r['bug']}: oracle={r['oracle']}, Top-1={r.get('top1','?')}")
+        elif r["status"] == "no_mismatch":
+            logger.info(f"  ⚠️ {r['bug']}: oracle={r['oracle']}, 不能触发 mismatch")
+        else:
+            logger.info(f"  💥 {r['bug']}: oracle={r.get('oracle','?')}, {r['status']}")
+
+    summary = {
+        "total": total,
+        "tested": tested,
+        "top1": top1, "top5": top5,
+        "no_mismatch": len(no_mismatch),
+        "errors": len(errors),
+        "top1_rate": f"{top1}/{tested}" if tested > 0 else "N/A",
+        "top5_rate": f"{top5}/{tested}" if tested > 0 else "N/A",
+        "results": results,
+    }
     (Path(cfg.output) / "summary.json").write_text(json.dumps(summary, indent=2, ensure_ascii=False))
 
 

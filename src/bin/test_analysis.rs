@@ -509,21 +509,27 @@ impl TestInfoGenerator for TemplateTestInfoGenerator {
 
         output.push_str("\n");
 
-        // Instruction trace context
-        output.push_str("INSTRUCTION TRACE CONTEXT:\n");
-        if context_instructions.is_empty() {
-            output.push_str("  No instruction trace available\n");
-        } else {
-            for (i, instr) in context_instructions.iter().enumerate() {
-                let marker = if Some(instr) == current_instruction.as_ref() {
-                    ">>>"
-                } else {
-                    "   "
-                };
-                output.push_str(&format!(
-                    "{} [{:2}] Core {}: PC=0x{:08x} (0x{:08x}) {}\n",
-                    marker, i, instr.core, instr.pc, instr.encoding, instr.instruction
-                ));
+        // Instruction trace context — only include if instructions are meaningful
+        let trace_is_garbage = context_instructions.iter().all(|i| {
+            i.encoding == 0 || i.instruction.contains("unimp")
+        });
+
+        if !trace_is_garbage {
+            output.push_str("INSTRUCTION TRACE CONTEXT:\n");
+            if context_instructions.is_empty() {
+                output.push_str("  No instruction trace available\n");
+            } else {
+                for (i, instr) in context_instructions.iter().enumerate() {
+                    let marker = if Some(instr) == current_instruction.as_ref() {
+                        ">>>"
+                    } else {
+                        "   "
+                    };
+                    output.push_str(&format!(
+                        "{} [{:2}] Core {}: PC=0x{:08x} (0x{:08x}) {}\n",
+                        marker, i, instr.core, instr.pc, instr.encoding, instr.instruction
+                    ));
+                }
             }
         }
 
