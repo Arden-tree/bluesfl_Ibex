@@ -156,15 +156,29 @@ def phase_compile(bugs, cfg):
                 done_file.touch()
                 continue
 
-            # 复制输出文件
+            # 复制输出文件（不复制 trace——可能 24GB，太大了）
             shutil.copy2(simdir / "mismatch_log.txt", out_dir / "mismatch_log.txt")
-            shutil.copy2(simdir / "trace_core_00000000.log", out_dir / "trace_core_00000000.log")
             shutil.copy2(simdir / "sim.fst", out_dir / "sim.fst")
             if not (out_dir / "rm_params.tree.json").exists():
                 alt = ibex / "build/lowrisc_ibex_ibex_simple_system_0/sim-verilator/rm_params.tree.json"
                 src = alt if alt.exists() else simdir / "rm_params.tree.json"
                 if src.exists():
                     shutil.copy2(src, out_dir / "rm_params.tree.json")
+
+            # 立即运行 test_analysis（trace 文件还在 simdir，可以读取）
+            bluesfl_dir = Path(getattr(cfg, 'bluesfl_dir', '')) or Path.home() / "bluesfl"
+            ta_bin = str(Path(bluesfl_dir) / "target/debug/test_analysis")
+            if Path(ta_bin).exists():
+                logger.info("  生成 test_info.json...")
+                r = run([ta_bin,
+                         f"--info-file={simdir}/mismatch_log.txt",
+                         f"--inst-trace={simdir}/trace_core_00000000.log",
+                         f"--output-file={out_dir}/test_info.json",
+                         "--time-step=2"], timeout=120)
+                if (out_dir / "test_info.json").exists():
+                    logger.info("  test_info.json ✅")
+                else:
+                    logger.warning("  test_info.json 生成失败")
 
             # 复制 coverage（全部，阶段 2 会清理）
             cov_dir = out_dir / "coverage"
@@ -212,15 +226,10 @@ def phase_analyze(bugs, cfg):
         logger.info(f"[{i+1}/{len(bugs)}] {name} (oracle: {oracle['module_name']})")
 
         try:
-            # test_analysis
-            r = run([str(bluesfl / "target/debug/test_analysis"),
-                     f"--info-file={out_dir}/mismatch_log.txt",
-                     f"--inst-trace={out_dir}/trace_core_00000000.log",
-                     f"--output-file={out_dir}/test_info.json",
-                     "--time-step=2"], timeout=60)
+            # 使用 phase 1 生成的 test_info.json（不再重新生成）
             if not (out_dir / "test_info.json").exists():
-                logger.error("  test_info 失败")
-                results.append({"bug": name, "status": "test_info_fail", "oracle": oracle["module_name"]})
+                logger.error("  test_info.json 缺失（phase 1 未生成）")
+                results.append({"bug": name, "status": "test_info_missing", "oracle": oracle["module_name"]})
                 continue
 
             test_info = json.loads((out_dir / "test_info.json").read_text())
