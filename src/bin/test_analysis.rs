@@ -81,7 +81,10 @@ fn main() -> anyhow::Result<()> {
     assert!(cosim_output.mismatch.is_some());
     assert!(cosim_output.failure_time.is_some());
 
-    let inst_trace = InstructionTrace::parse_file(args.inst_trace)?;
+    let inst_trace = InstructionTrace::parse_file_at_time(
+        &args.inst_trace,
+        cosim_output.failure_time,
+    )?;
     let ibex_cycle = 2 * cosim_output.time_step;
     let test_info_generator = TemplateTestInfoGenerator;
 
@@ -116,6 +119,35 @@ fn main() -> anyhow::Result<()> {
 
 fn parse_hex_value(s: &str) -> anyhow::Result<u32, std::num::ParseIntError> {
     u32::from_str_radix(s, 16)
+}
+
+/// Parse "DUT: ff" or "DUT retired : ff" → 0xff
+fn parse_dut_hex(line: &str) -> Option<u32> {
+    let lower = line.to_lowercase();
+    let dut_pos = lower.find("dut")?;
+    let after_dut = &line[dut_pos..];
+    // Find hex value after "DUT" — skip "retired" or "x15" etc.
+    if let Some(colon_pos) = after_dut.find(':') {
+        let after_colon = after_dut[colon_pos + 1..].trim();
+        let hex_str = after_colon.split_whitespace().next()?;
+        // Remove trailing comma
+        let hex_str = hex_str.trim_end_matches(',');
+        return parse_hex_value(hex_str).ok();
+    }
+    None
+}
+
+/// Parse "expected: 49" → 0x49
+fn parse_expected_hex(line: &str) -> Option<u32> {
+    let lower = line.to_lowercase();
+    let exp_pos = lower.find("expected")?;
+    let after_exp = &line[exp_pos..];
+    if let Some(colon_pos) = after_exp.find(':') {
+        let after_colon = after_exp[colon_pos + 1..].trim();
+        let hex_str = after_colon.split_whitespace().next()?;
+        return parse_hex_value(hex_str).ok();
+    }
+    None
 }
 
 impl CoSimResult {
@@ -160,11 +192,34 @@ impl CoSimResult {
                     }
                 }
                 result.mismatch = Some(MismatchType::PcMismatch(oracle_value.unwrap_or(0)));
-            } else if line.contains("WE_MISMATCH") {
+            } else if line.contains("WE_MISMATCH") || line.to_lowercase().contains("write enable mismatch") {
+                // "write enable mismatch DUT: 1 expected: 0"
+                if oracle_value.is_none() {
+                    if let (Some(d), Some(e)) = (parse_dut_hex(line), parse_expected_hex(line)) {
+                        result.dut.wen = d != 0;
+                        result.mismatch = Some(MismatchType::WeMismatch(e != 0));
+                        continue;
+                    }
+                }
                 result.mismatch = Some(MismatchType::WeMismatch(oracle_value.unwrap_or(0) != 0));
-            } else if line.contains("WADDR_MISMATCH") {
+            } else if line.contains("WADDR_MISMATCH") || line.to_lowercase().contains("write address mismatch") {
+                if oracle_value.is_none() {
+                    if let (Some(d), Some(e)) = (parse_dut_hex(line), parse_expected_hex(line)) {
+                        result.dut.w_addr = d;
+                        result.mismatch = Some(MismatchType::WaddrMismatch(e));
+                        continue;
+                    }
+                }
                 result.mismatch = Some(MismatchType::WaddrMismatch(oracle_value.unwrap_or(0)));
-            } else if line.contains("WDATA_MISMATCH") {
+            } else if line.contains("WDATA_MISMATCH") || line.to_lowercase().contains("write data mismatch") {
+                // "Register write data mismatch to x15 DUT: ff expected: 49"
+                if oracle_value.is_none() {
+                    if let (Some(d), Some(e)) = (parse_dut_hex(line), parse_expected_hex(line)) {
+                        result.dut.w_data = d;
+                        result.mismatch = Some(MismatchType::WdataMismatch(e));
+                        continue;
+                    }
+                }
                 result.mismatch = Some(MismatchType::WdataMismatch(oracle_value.unwrap_or(0)));
             }
 
@@ -278,8 +333,53 @@ impl InstructionTrace {
     }
 
     pub fn parse_file<P: AsRef<Path>>(path: P) -> anyhow::Result<Vec<InstructionTrace>> {
-        let contents = std::fs::read_to_string(path)?;
-        Ok(Self::parse_string(&contents))
+        Self::parse_file_at_time(path, None)
+    }
+
+    /// Parse instruction trace, optionally filtering by target time.
+    /// When target_time is provided, uses awk to extract lines near that time
+    /// instead of tail (which gets the wrong instructions for late-triggering bugs).
+    pub fn parse_file_at_time<P: AsRef<Path>>(
+        path: P,
+        target_time: Option<TimeAnnotation>,
+    ) -> anyhow::Result<Vec<InstructionTrace>> {
+        let path = path.as_ref();
+        let metadata = std::fs::metadata(path)?;
+
+        if metadata.len() > 10_000_000 {
+            // Large file: use grep to find lines near the mismatch time.
+            // Trace format: "  Time  Cycle  PC  Insn  Decoded ..."
+            // Time is the first whitespace-delimited column.
+            if let Some(t) = target_time {
+                // grep for lines where first field is within [t-6, t+2]
+                // Build pattern: matches "  139X  " or "  140X  " etc.
+                let t_lo = t - 6;
+                let t_hi = t + 2;
+                let pattern = format!("^\\s*({})\\s", (t_lo..=t_hi).map(|x| x.to_string()).collect::<Vec<_>>().join("|"));
+                let output = std::process::Command::new("grep")
+                    .args(["-E", &pattern])
+                    .arg(path)
+                    .output()?;
+
+                let contents = String::from_utf8_lossy(&output.stdout).to_string();
+                let traces = Self::parse_string(&contents);
+                if !traces.is_empty() {
+                    return Ok(traces);
+                }
+                // Fallback to tail if grep found nothing
+            }
+
+            // Fallback: last 20 lines
+            let output = std::process::Command::new("tail")
+                .args(["-n", "20"])
+                .arg(path)
+                .output()?;
+            let contents = String::from_utf8_lossy(&output.stdout).to_string();
+            Ok(Self::parse_string(&contents))
+        } else {
+            let contents = std::fs::read_to_string(path)?;
+            Ok(Self::parse_string(&contents))
+        }
     }
 
     pub fn parse_string(content: &str) -> Vec<InstructionTrace> {
@@ -381,17 +481,27 @@ impl TestInfoGenerator for TemplateTestInfoGenerator {
                 }
             }
             MismatchType::WdataMismatch(oracle_wdata) => {
-                if let Some(instr) = current_instruction {
+                // Check if the instruction is meaningful (not c.unimp/encoding 0)
+                let is_valid_instr = current_instruction
+                    .map(|i| i.encoding != 0 && !i.instruction.contains("unimp"))
+                    .unwrap_or(false);
+
+                if is_valid_instr {
+                    if let Some(instr) = current_instruction {
+                        output.push_str(&format!(
+                            "Now this core design is buggy when executing a instruction. {} this instruction writes wrong data 0x{:08x} to register which should write data 0x{:08x}.\n\n",
+                            instr.instruction,
+                            report.dut.w_data,
+                            oracle_wdata
+                        ));
+                    }
+                } else {
+                    // Instruction at mismatch time is garbage (e.g., c.unimp after wrong jump).
+                    // Describe mismatch factually without naming the misleading instruction.
                     output.push_str(&format!(
-                        "Now this core design is buggy when executing a instruction. {} this instruction writes wrong data 0x{:08x} to register which should write data 0x{:08x}.\n\n",
-                        instr.instruction,
+                        "Register write data mismatch detected: DUT wrote 0x{:08x} but the reference model expected 0x{:08x}.\n\n",
                         report.dut.w_data,
                         oracle_wdata
-                    ));
-                } else {
-                    output.push_str(&format!(
-                        "Write data mismatch detected: Expected WDATA 0x{:08x}, but got 0x{:08x}\n\n",
-                        oracle_wdata, report.dut.w_data
                     ));
                 }
             }
