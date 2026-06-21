@@ -200,6 +200,50 @@ mod tests {
         })
     }
 
+    /// Verify BluesFL can parse Verilator 5.x rm_params (post-processed by
+    /// fix_rm_params_v5.py to add explicit dead: false for alive modules).
+    /// Without the post-processing, alive modules (ibex_alu, ibex_core, etc.)
+    /// would be silently dropped by parse_module's `?` on missing `dead` field.
+    #[test]
+    fn test_ibex_sbfl_rm_params_v5_postprocessed() {
+        let file_path = "/home/yuan/ibex-sbfl/build/lowrisc_ibex_ibex_simple_system_cosim_0/sim-verilator/rm_params.tree.json";
+        if !std::path::Path::new(file_path).exists() {
+            eprintln!("[skip] ibex-sbfl rm_params not present at {file_path}");
+            return;
+        }
+        let report = ParameterCoverageReport::new(file_path);
+        let lines_coverages = &report.lines_coverage;
+
+        // After fix_rm_params_v5.py post-processing: 82 alive + 74 dead.
+        // parse_module keeps only alive (!dead) → should have ~82 entries.
+        // (If param.rs `?` bug were triggered, this would be 0.)
+        assert!(
+            lines_coverages.len() > 40,
+            "alive module count too small: {} (expected 80+). \
+             Possible cause: Verilator 5.x dead field missing, \
+             run scripts/fix_rm_params_v5.py",
+            lines_coverages.len()
+        );
+
+        // Sanity: key Ibex modules should be alive.
+        // NOTE: cpufuzz fork uses ibex_ex_block (not ibex_ex_stage like upstream).
+        for must_alive in ["ibex_alu", "ibex_core", "ibex_id_stage", "ibex_ex_block"] {
+            assert!(
+                lines_coverages.contains_key(must_alive),
+                "expected alive module {} missing from rm_params parse. \
+                 got: {:?}",
+                must_alive,
+                lines_coverages.keys().collect::<Vec<_>>()
+            );
+        }
+
+        eprintln!(
+            "[ok] ibex-sbfl rm_params loaded: {} alive modules, sample keys: {:?}",
+            lines_coverages.len(),
+            lines_coverages.keys().take(5).collect::<Vec<_>>()
+        );
+    }
+
     #[test]
     fn test_param_example() {
         let file_path = "tests/test_files/param_example_rm_params.tree.json";

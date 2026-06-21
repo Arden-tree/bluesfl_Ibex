@@ -202,6 +202,11 @@ impl CoSimResult {
                     }
                 }
                 result.mismatch = Some(MismatchType::WeMismatch(oracle_value.unwrap_or(0) != 0));
+            } else if line.to_lowercase().contains("didn't write") && line.to_lowercase().contains("write was expected") {
+                // cpufuzz cosim format: "DUT didn't write to register x10, but a write was expected"
+                // Semantically equivalent to WE_MISMATCH with DUT.wen=false, expected=true
+                result.dut.wen = false;
+                result.mismatch = Some(MismatchType::WeMismatch(true));
             } else if line.contains("WADDR_MISMATCH") || line.to_lowercase().contains("write address mismatch") {
                 if oracle_value.is_none() {
                     if let (Some(d), Some(e)) = (parse_dut_hex(line), parse_expected_hex(line)) {

@@ -37,6 +37,7 @@ import json
 import logging
 import os
 import re
+import shutil
 import subprocess
 import sys
 from argparse import ArgumentParser
@@ -66,6 +67,14 @@ def main(cfg):
         logger.error(f"Path {root_path} does not exist")
         return
 
+    # Resolve localizer/test_analysis to absolute paths up front — subprocess
+    # runs with cwd=cur_wkdir, so relative paths would break.
+    cfg.localizer = str(Path(cfg.localizer).resolve())
+    if cfg.test_analysis:
+        cfg.test_analysis = str(Path(cfg.test_analysis).resolve())
+    if cfg.env:
+        cfg.env = str(Path(cfg.env).resolve())
+
     if not Path(cfg.localizer).exists():
         logger.error(f"Localizer executable {cfg.localizer} does not exist")
         return
@@ -81,6 +90,10 @@ def main(cfg):
         folders = folders[cfg.start:]
     elif cfg.start is None and cfg.end is not None:
         folders = folders[:cfg.end]
+
+    if cfg.only:
+        wanted = set(cfg.only)
+        folders = [f for f in folders if f.name in wanted]
 
     logger.info(f"Found {len(folders)} folders to process")
 
@@ -107,16 +120,26 @@ def main(cfg):
                     logger.warning(f"  Build dir not found: {exe_path}, skipping")
                     continue
 
-                # Step 1: Rerun cosim with coverage, capture stdout
-                test_data = None
+                # Step 1: cosim #1 (无 coverage) — 检测 mismatch → mismatch_log.txt
+                # 对齐论文: mutator 阶段的 cosim 只判 mismatch, 不收 coverage
+                sim_status = "skipped"
                 try:
                     if not cfg.no_sim:
-                        rerun_simulation(cur_wkdir, exe_path)
+                        sim_status = rerun_simulation_no_cov(exe_path, cfg.cosim_timeout)
                 except Exception as e:
-                    logger.error(f"Error when rerun simulation at {cur_wkdir}: {e}")
+                    logger.error(f"Error in cosim #1 at {cur_wkdir}: {e}")
                     error_folders.append(cur_wkdir)
+                    sim_status = "error"
+
+                # 论文: 数据集只保留能触发 mismatch 的 bug。
+                # 超时/无 mismatch 的 case 直接跳过, 不做后续步骤。
+                if sim_status not in ("hit", "skipped"):
+                    logger.warning(f"  cosim#1 status={sim_status}, skip rest")
+                    error_folders.append(cur_wkdir)
+                    continue
 
                 # Step 2: Generate test_info.json if missing
+                # 对齐论文 gen_test_info.py: 从 mismatch_log 解析 (sig, t, time_bound)
                 if not test_info_file.exists() and cfg.test_analysis:
                     try:
                         generate_test_info(cur_wkdir, exe_path, cfg.test_analysis,
@@ -135,7 +158,20 @@ def main(cfg):
                     error_folders.append(cur_wkdir)
                     continue
 
-                # Step 4: Run localizer
+                # Step 4: cosim #2 (带精准 coverage 窗口) — dump per-cycle coverage
+                # 对齐论文 fl_run_all.py: cov_start=time_bound, cov_end=start_time
+                if not cfg.no_sim:
+                    try:
+                        cov_status = rerun_simulation_with_cov(
+                            exe_path, test_data, cfg.cosim_timeout)
+                        if cov_status not in ("ok", "skipped"):
+                            logger.warning(f"  cosim#2 status={cov_status}")
+                    except Exception as e:
+                        logger.error(f"Error in cosim #2 at {cur_wkdir}: {e}")
+                        error_folders.append(cur_wkdir)
+                        continue
+
+                # Step 5: Run localizer
                 try:
                     run_localizer(cfg, cur_wkdir, test_data, cfg.prefix)
                     success_count += 1
@@ -148,17 +184,91 @@ def main(cfg):
         print(f"  ERROR: {path}")
 
 
-def rerun_simulation(cur_wkdir: Path, exe_path: Path):
-    """Rerun cosim with per-cycle coverage. Capture stdout to mismatch_log.txt.
+def _decode_stream(b) -> str:
+    if b is None:
+        return ""
+    if isinstance(b, bytes):
+        return b.decode(errors="ignore")
+    return b
 
-    Paper flow: cosim runs CoreMark, detects mismatch, generates coverage.
-    The mismatch info goes to stdout (via $display in the checker module).
-    We capture it for test_analysis to generate the test report.
+
+def rerun_simulation_no_cov(exe_path: Path, timeout: int) -> str:
+    """Cosim #1: 不带 coverage flag, 只检测 mismatch → 写 mismatch_log.txt.
+
+    对齐论文 mutator 阶段的 cosim (ibex_boot.sh):
+      - 无 --cov-start/--cov-end/--cov-dir
+      - 让 cosim 自然跑, mismatch 时自动停
+      - 捕获 stdout (含 mismatch 信息) 给 test_analysis 解析
+
+    Returns:
+        'hit'         — mismatch detected (bug triggered)
+        'no_mismatch' — cosim finished but no mismatch in output
+        'timeout'     — killed after <timeout>s without mismatch
     """
     mismatch_log = exe_path / "mismatch_log.txt"
-    trace_log = exe_path / "trace_core_00000000.log"
 
-    # Remove old coverage and logs
+    # 清旧 coverage 和 log
+    for f in exe_path.glob("coverage*.dat"):
+        os.remove(f)
+    if mismatch_log.exists():
+        os.remove(mismatch_log)
+
+    cmd = [
+        "./Vibex_simple_system",
+        "--meminit=ram,../../../examples/sw/benchmarks/coremark/coremark.elf",
+        "-t",
+    ]
+
+    logger.info(f"  [cosim #1] running without coverage (timeout={timeout}s)...")
+    try:
+        result = subprocess.run(
+            cmd, capture_output=True, text=True, cwd=exe_path, timeout=timeout,
+        )
+    except subprocess.TimeoutExpired as e:
+        with open(mismatch_log, 'w') as f:
+            f.write(_decode_stream(e.stdout))
+            err = _decode_stream(e.stderr)
+            if err:
+                f.write("\nSTDERR:\n")
+                f.write(err)
+            f.write(f"\n\n[TIMEOUT] cosim #1 killed after {timeout}s without mismatch\n")
+        logger.warning(f"  [cosim #1] TIMEOUT after {timeout}s (bug not triggered)")
+        return "timeout"
+
+    with open(mismatch_log, 'w') as f:
+        f.write(result.stdout)
+        if result.stderr:
+            f.write("\nSTDERR:\n")
+            f.write(result.stderr)
+
+    if "mismatch" in result.stdout.lower():
+        logger.info(f"  [cosim #1] mismatch detected, mismatch_log.txt saved")
+        return "hit"
+    logger.warning(f"  [cosim #1] no mismatch found in cosim output")
+    return "no_mismatch"
+
+
+def rerun_simulation_with_cov(exe_path: Path, test_data: dict, timeout: int) -> str:
+    """Cosim #2: 带精准 coverage 窗口, dump per-cycle coverage.
+
+    对齐论文 fl_run_all.py (master 分支) 的 rerun_simulation:
+      cov_start = test_data['time_bound']    # BluesFL BFS 下界
+      cov_end   = test_data['start_time']    # 失败时间 (cosim 在此自然停)
+      cov_dir   = '.'                        # (master 漏了这行, 我们补上)
+
+    修正 master 的两处 bug:
+      - flag 名: --cov-start (不是 --cover-start)
+      - 必须传 --cov-dir, 否则 verilator_sim_ctrl.cc 里 cov_dir=nullptr 不写文件
+
+    Returns:
+        'ok'          — coverage 文件已生成
+        'no_coverage' — cosim 跑完但没生成 coverage 文件
+        'timeout'     — 超时
+    """
+    cov_start = test_data.get('time_bound', 1)
+    cov_end = test_data.get('start_time', 30)
+
+    # 清旧 coverage (保留 mismatch_log.txt, test_analysis 已读过)
     for f in exe_path.glob("coverage*.dat"):
         os.remove(f)
 
@@ -166,31 +276,27 @@ def rerun_simulation(cur_wkdir: Path, exe_path: Path):
         "./Vibex_simple_system",
         "--meminit=ram,../../../examples/sw/benchmarks/coremark/coremark.elf",
         "-t",
-        "--cov-start", "1",
-        "--cov-end", "30",
+        "--cov-start", str(cov_start),
+        "--cov-end", str(cov_end),
         "--cov-dir", ".",
     ]
 
-    logger.info(f"  Running cosim with coverage...")
-    result = subprocess.run(cmd, capture_output=True, text=True, cwd=exe_path)
-
-    # Capture stdout (contains mismatch info) to mismatch_log.txt
-    with open(mismatch_log, 'w') as f:
-        f.write(result.stdout)
-        if result.stderr:
-            f.write("\nSTDERR:\n")
-            f.write(result.stderr)
+    logger.info(f"  [cosim #2] running with coverage window "
+                f"[{cov_start}, {cov_end}] (timeout={timeout}s)...")
+    try:
+        subprocess.run(
+            cmd, capture_output=True, text=True, cwd=exe_path, timeout=timeout,
+        )
+    except subprocess.TimeoutExpired:
+        logger.warning(f"  [cosim #2] TIMEOUT after {timeout}s")
+        return "timeout"
 
     cov_count = len(list(exe_path.glob("coverage*.dat")))
     if cov_count > 0:
-        logger.info(f"  Coverage: {cov_count} files generated")
-    else:
-        logger.warning(f"  No coverage files generated!")
-
-    if "mismatch" in result.stdout.lower():
-        logger.info(f"  Mismatch detected, mismatch_log.txt saved")
-    else:
-        logger.warning(f"  No mismatch found in cosim output!")
+        logger.info(f"  [cosim #2] coverage: {cov_count} files generated")
+        return "ok"
+    logger.warning(f"  [cosim #2] no coverage files generated")
+    return "no_coverage"
 
 
 def generate_test_info(cur_wkdir: Path, exe_path: Path,
@@ -246,6 +352,31 @@ def run_localizer(cfg, cur_wkdir, test_data, prefix):
     res_save_folder = res_save_folder / f"{prefix}_{cur_max_cnt + 1}"
     os.mkdir(res_save_folder)
 
+    sim_dir = cur_wkdir / "build/lowrisc_ibex_ibex_simple_system_cosim_0/sim-verilator"
+
+    # rm_params.tree.json: 优先用 wkdir 内由 apply_and_build 后处理生成的版本
+    # (Verilator 5.x 输出已 patch 成 BluesFL 兼容格式), 缺失时 fallback 到 golden
+    rm_params = sim_dir / "rm_params.tree.json"
+    if not rm_params.exists():
+        # 尝试用 fix_rm_params_v5.py 现场生成
+        fix_script = Path(cfg.sv_home) / "scripts/fix_rm_params_v5.py"
+        src = sim_dir / "Vibex_simple_system_009_param.tree.json"
+        if fix_script.exists() and src.exists():
+            logger.info(f"  generating rm_params.tree.json via fix_rm_params_v5.py")
+            subprocess.run(
+                ["python3", str(fix_script),
+                 "--input", str(src), "--output", str(rm_params)],
+                check=True, capture_output=True, text=True,
+            )
+        else:
+            # fallback 到 golden
+            golden_rm_params = Path(cfg.golden_rm_params)
+            if golden_rm_params.exists():
+                logger.info(f"  copying rm_params.tree.json from {golden_rm_params}")
+                shutil.copy2(golden_rm_params, rm_params)
+            else:
+                logger.error(f"  rm_params missing and neither fix script nor golden found")
+
     cmd = [
         cfg.localizer,
         f"--bug-id={bug_id}",
@@ -254,9 +385,9 @@ def run_localizer(cfg, cur_wkdir, test_data, prefix):
         f"--model={cfg.model}",
         f"--project-path={cur_wkdir}/rtl",
         f"--include-paths={cur_wkdir}/vendor/lowrisc_ip/ip/prim/rtl/,{cur_wkdir}/vendor/lowrisc_ip/dv/sv/dv_utils",
-        f"--rm-params-path={cur_wkdir}/build/lowrisc_ibex_ibex_simple_system_cosim_0/sim-verilator/rm_params.tree.json",
-        f"--coverage-path={cur_wkdir}/build/lowrisc_ibex_ibex_simple_system_cosim_0/sim-verilator",
-        f"--wave-path={cur_wkdir}/build/lowrisc_ibex_ibex_simple_system_cosim_0/sim-verilator/sim.fst",
+        f"--rm-params-path={rm_params}",
+        f"--coverage-path={sim_dir}",
+        f"--wave-path={sim_dir}/sim.fst",
         "--top-module=ibex_core",
         "--top-scope=TOP.ibex_simple_system.u_top.u_ibex_top.u_ibex_core",
         f"--start-scope={test_data['start_scope']}",
@@ -272,15 +403,20 @@ def run_localizer(cfg, cur_wkdir, test_data, prefix):
     if cfg.env:
         cmd.append(f"--dot-env={cfg.env}")
 
-    # Save boot script for reproducibility
-    with open(cur_wkdir / "boot_sv_analysis.sh", 'w') as f:
-        boot_cmd = ' '.join(cmd) + f' --test-info "{test_data["test_info"]}"'
-        f.write(boot_cmd)
-
     cmd += ['--test-info', test_data['test_info']]
 
+    # Save boot script (JSON form) for reproducibility — avoids shell quoting
+    # bugs when test_info contains parens/backticks/newlines.
+    import json as _json
+    with open(cur_wkdir / "boot_sv_analysis.json", 'w') as f:
+        _json.dump({"cwd": str(cur_wkdir), "cmd": cmd}, f, indent=2)
+
     logger.info(f"  Running sv_analysis for bug {bug_id}...")
-    result = subprocess.run(cmd, capture_output=True, text=True, check=True, cwd=cur_wkdir)
+    env = os.environ.copy()
+    if cfg.sv_home:
+        env["SV_ANALYSIS_HOME"] = cfg.sv_home
+    result = subprocess.run(cmd, capture_output=True, text=True, check=True,
+                            cwd=cur_wkdir, env=env)
 
     with open(cur_wkdir / 'sv_analysis_output.log', 'w') as f:
         f.write("STDOUT:\n")
@@ -302,12 +438,20 @@ if __name__ == '__main__':
     parser.add_argument("--prefix", default="llm", help="result directory prefix")
     parser.add_argument("--start", default=None, help="start index", type=int)
     parser.add_argument("--end", default=None, help="end index", type=int)
+    parser.add_argument("--only", nargs="+", default=None,
+                        help="只处理指定 case 名 (如 --only dataset_0_0 dataset_0_1)")
     parser.add_argument("--no-sim", help="skip simulation rerun", action="store_true")
     parser.add_argument("--vote-total", default=1, type=int, help="vote total number")
     parser.add_argument("--vote-top-k", default=1, type=int, help="pick top-k choices")
     parser.add_argument("--time-step", default=2, type=int, help="time step for test_analysis")
+    parser.add_argument("--cosim-timeout", default=60, type=int,
+                        help="cosim 超时秒数 (默认 60s, 对齐论文 ibex_boot.sh); 超时表示 bug 未触发, 跳过该 case")
     parser.add_argument("--agent-type", default="open-ai",
                         choices=["open-ai", "claude", "ollama"], help="agent type")
+    parser.add_argument("--sv-home", default="/home/yuan/bluesfl",
+                        help="SV_ANALYSIS_HOME (bluesfl project root)")
+    parser.add_argument("--golden-rm-params", default="/home/yuan/ibex/build_golden/lowrisc_ibex_ibex_simple_system_cosim_0/sim-verilator/rm_params.tree.json",
+                        help="golden rm_params.tree.json to copy into freshly built wkdir")
 
     args = parser.parse_args()
     main(args)
