@@ -789,7 +789,10 @@ where
             done: false,
         }));
 
-        // 5. System prompt
+        // 5. System prompt (paper Section 3.4 / Figure 3)
+        // Key: LLM may call append_block multiple times — every block it deems
+        // suspicious (even with low confidence) should be appended. The final
+        // ranked list is produced from this suspicious queue.
         let system_prompt = format!(
             r#"You are a debugging assistant for a RISC-V microprocessor design team.
 Your task is to trace backward through the instruction execution path to find the root cause of a fault.
@@ -806,13 +809,26 @@ Your task is to trace backward through the instruction execution path to find th
 # Available signals for check_signals (trace backward)
 {:?}
 
-Use tools to:
-1. read_values: Read signal values from waveform at specific times.
-2. check_signals: Navigate backward to blocks driving suspicious signals. Use signal names from "Available signals" or "Driven signals".
-3. append_block: Mark current block as the root cause.
-4. exit: End analysis.
+# Tool usage guide
 
-Start by reading driven signal values. If a signal carries the wrong value, use check_signals to trace it backward. Continue until you find the root cause."#,
+At each code block you visit, evaluate whether it could be the root cause of the fault:
+
+1. read_values: Read signal values from the waveform at specific times. Use this to verify whether a signal carries an expected or wrong value.
+
+2. check_signals: Navigate backward to the code blocks driving suspicious signals. Use this when a signal carries a wrong value and you want to find what produces it.
+
+3. append_block: Append the current code block to the suspicious queue. Call this whenever you suspect the current block may contain the bug — you do NOT need to be fully certain. You may call append_block multiple times on different blocks. All appended blocks will be ranked later by confidence.
+
+4. exit: End the analysis. Only call this when you have thoroughly inspected the relevant blocks.
+
+# Workflow
+
+- Start by reading the driven signal values of the current block.
+- If a signal carries an unexpected value, use check_signals to trace it backward.
+- At each block you visit, ask: "Could this block be the root cause?" If yes or maybe, call append_block. Err on the side of marking suspicious blocks rather than missing candidates.
+- After exploring the relevant execution path, call exit.
+
+Remember: the goal is to produce a ranked list of suspicious blocks. Calling append_block on 3-5 candidate blocks is normal and expected, not a sign of indecision."#,
             self.test_info, start.module, start.code, start.signals, avail_signals.iter().take(50).collect::<Vec<_>>()
         );
 
@@ -839,7 +855,12 @@ Start by reading driven signal values. If a signal carries the wrong value, use 
             Err(e) => warn!("[Phase 2] Error: {}", e),
         }
 
-        // 6. Collect suspicious
+        // 6. Collect suspicious queue (paper Section 3.4)
+        // Top-K candidate pool = suspicious queue, i.e. blocks the LLM explicitly
+        // marked via append_block. The prompt encourages 3-5 marks; BlockReranker
+        // will assign each a confidence score in [0, 1] to produce the ranked list.
+        // `traversed` is kept in NavState only as an inspection log for debugging;
+        // it does NOT contribute to choices.
         let s = state.lock().unwrap();
         for (module, bid) in &s.suspicious {
             warn!("[Phase 2] Suspicious: {} (bid={})", module, bid);
@@ -849,29 +870,10 @@ Start by reading driven signal values. If a signal carries the wrong value, use 
                 }
             }
         }
-        info!("[Phase 2] {} explicit suspicious blocks", s.suspicious.len());
-
-        // 7. Add traversed blocks (LLM navigation path) as Top-K candidates.
-        // Paper-style Top-K requires multiple ranked choices. LLM-explicit marks
-        // are usually 1-3; the navigation path provides additional candidates
-        // for BlockReranker to score and order.
-        let explicit: HashSet<(String, u64)> = s.suspicious.iter().cloned().collect();
-        let mut added_traversed = 0;
-        for (module, bid) in &s.traversed {
-            if explicit.contains(&(module.clone(), *bid)) {
-                continue;  // already added above
-            }
-            if let Some((block, time)) = trace_blocks.iter().find(|(b, _)| b.get_bid() == *bid) {
-                if let Some(st) = block.get_suspicious_trace() {
-                    self.add_suspicious_block((st.0.clone(), *time), block.clone());
-                    added_traversed += 1;
-                }
-            }
-        }
         info!(
-            "[Phase 2] +{} traversed candidates (total choices: {})",
-            added_traversed,
-            s.suspicious.len() + added_traversed
+            "[Phase 2] {} suspicious blocks (choices pool); traversed {} blocks (not in choices)",
+            s.suspicious.len(),
+            s.traversed.len()
         );
     }
 }
