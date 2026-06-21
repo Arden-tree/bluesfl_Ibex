@@ -22,6 +22,10 @@ pub struct NavState {
     pub current: NavBlockInfo,
     pub waveform_mgr: WaveformManager,
     pub suspicious: Vec<(String, u64)>,
+    /// Every block LLM navigated to via check_signals, in order visited.
+    /// Used as Top-K candidate pool (paper-style ranking requires multiple candidates).
+    /// LLM-explicit `append_block` calls are duplicated here for explicit marking.
+    pub traversed: Vec<(String, u64)>,
     pub done: bool,
 }
 
@@ -157,6 +161,11 @@ impl Tool for NavCheckSignals {
                 let code = next.code.clone();
                 let signals = next.signals.clone();
                 let bid = next.bid;
+                // Record navigation path for Top-K candidate pool
+                let entry = (module.clone(), bid);
+                if !state.traversed.iter().any(|(m, b)| *m == entry.0 && *b == entry.1) {
+                    state.traversed.push(entry);
+                }
                 state.current = next;
                 drop(state);
                 return Ok(format!(
@@ -206,6 +215,11 @@ impl Tool for NavAppendBlock {
         let mut state = self.state.lock().map_err(|e| NavError::Msg(e.to_string()))?;
         let (module, bid) = (state.current.module.clone(), state.current.bid);
         state.suspicious.push((module.clone(), bid));
+        // Also record in traversed (high-confidence, but dedup keeps order)
+        let entry = (module.clone(), bid);
+        if !state.traversed.iter().any(|(m, b)| *m == entry.0 && *b == entry.1) {
+            state.traversed.push(entry);
+        }
         Ok(format!("Marked block {} ({}) as suspicious", bid, module))
     }
 }

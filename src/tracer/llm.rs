@@ -785,6 +785,7 @@ where
             current: start.clone(),
             waveform_mgr: WaveformManager::new(wave_path),
             suspicious: Vec::new(),
+            traversed: Vec::new(),
             done: false,
         }));
 
@@ -848,7 +849,30 @@ Start by reading driven signal values. If a signal carries the wrong value, use 
                 }
             }
         }
-        info!("[Phase 2] {} suspicious blocks found", s.suspicious.len());
+        info!("[Phase 2] {} explicit suspicious blocks", s.suspicious.len());
+
+        // 7. Add traversed blocks (LLM navigation path) as Top-K candidates.
+        // Paper-style Top-K requires multiple ranked choices. LLM-explicit marks
+        // are usually 1-3; the navigation path provides additional candidates
+        // for BlockReranker to score and order.
+        let explicit: HashSet<(String, u64)> = s.suspicious.iter().cloned().collect();
+        let mut added_traversed = 0;
+        for (module, bid) in &s.traversed {
+            if explicit.contains(&(module.clone(), *bid)) {
+                continue;  // already added above
+            }
+            if let Some((block, time)) = trace_blocks.iter().find(|(b, _)| b.get_bid() == *bid) {
+                if let Some(st) = block.get_suspicious_trace() {
+                    self.add_suspicious_block((st.0.clone(), *time), block.clone());
+                    added_traversed += 1;
+                }
+            }
+        }
+        info!(
+            "[Phase 2] +{} traversed candidates (total choices: {})",
+            added_traversed,
+            s.suspicious.len() + added_traversed
+        );
     }
 }
 
