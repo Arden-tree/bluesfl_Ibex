@@ -23,9 +23,12 @@ pub struct NavState {
     pub waveform_mgr: WaveformManager,
     pub suspicious: Vec<(String, u64)>,
     /// Every block LLM navigated to via check_signals, in order visited.
-    /// Used as Top-K candidate pool (paper-style ranking requires multiple candidates).
-    /// LLM-explicit `append_block` calls are duplicated here for explicit marking.
+    /// Inspection log only — does NOT contribute to Top-K choices.
     pub traversed: Vec<(String, u64)>,
+    /// Confidence scores assigned by the navigating LLM at exit time
+    /// (paper Section 3.4: "assigns each suspicious block a confidence score
+    /// between 0 and 1"). Map bid -> score.
+    pub scores: HashMap<u64, f64>,
     pub done: bool,
 }
 
@@ -226,6 +229,23 @@ impl Tool for NavAppendBlock {
 
 // ── exit ─────────────────────────────────────────────────────────────
 
+// ── exit (with scores) ───────────────────────────────────────────────
+
+#[derive(Deserialize)]
+pub struct NavExitArgs {
+    /// Confidence scores for each appended block, in [0.0, 1.0].
+    /// Each entry: { "bid": <block id>, "score": <confidence> }.
+    /// Paper Section 3.4: "assigns each suspicious block a confidence score
+    /// between 0 and 1, producing a ranked list of suspicious blocks."
+    pub scores: Vec<NavScoreEntry>,
+}
+
+#[derive(Deserialize)]
+pub struct NavScoreEntry {
+    pub bid: u64,
+    pub score: f64,
+}
+
 pub struct NavExit {
     pub state: Arc<Mutex<NavState>>,
 }
@@ -239,20 +259,47 @@ impl NavExit {
 impl Tool for NavExit {
     const NAME: &'static str = "exit";
     type Error = NavError;
-    type Args = NavEmptyArgs;
+    type Args = NavExitArgs;
     type Output = String;
 
     async fn definition(&self, _: String) -> ToolDefinition {
         ToolDefinition {
             name: Self::NAME.to_string(),
-            description: "End the debugging analysis.".to_string(),
-            parameters: serde_json::json!({"type": "object", "properties": {}}),
+            description: "End the debugging analysis. You MUST provide a confidence score (0.0 to 1.0) for every block you marked via append_block. Higher score = more likely to be the root cause.".to_string(),
+            parameters: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "scores": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "bid": {"type": "integer", "description": "Block id (must match a block you appended)"},
+                                "score": {"type": "number", "description": "Confidence score in [0.0, 1.0]"}
+                            },
+                            "required": ["bid", "score"]
+                        },
+                        "description": "Confidence scores for every appended block, ordered by your belief. The highest-scored block is the most likely root cause."
+                    }
+                },
+                "required": ["scores"]
+            }),
         }
     }
 
-    async fn call(&self, _: Self::Args) -> Result<Self::Output, Self::Error> {
+    async fn call(&self, args: Self::Args) -> Result<Self::Output, Self::Error> {
         let mut state = self.state.lock().map_err(|e| NavError::Msg(e.to_string()))?;
+        let mut stored = 0;
+        for entry in &args.scores {
+            // Clamp to [0, 1]
+            let s = entry.score.clamp(0.0, 1.0);
+            state.scores.insert(entry.bid, s);
+            stored += 1;
+        }
         state.done = true;
-        Ok("Analysis ended.".to_string())
+        Ok(format!(
+            "Analysis ended. Stored {} confidence scores for ranked output.",
+            stored
+        ))
     }
 }

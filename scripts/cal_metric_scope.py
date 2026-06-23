@@ -69,9 +69,11 @@ def evaluate_case(case_dir: Path, prefix: str, use_scope: bool = True) -> dict |
         return None
 
     # Oracle: prefer scope_name match
-    # cpufuzz mutator nests oracle_info.json at dataset/dataset_0/<N>/oracle_info.json
-    case_num = case_id.rsplit("_", 1)[-1]
-    oracle_path = wkdir / "dataset" / "dataset_0" / case_num / "oracle_info.json"
+    # cpufuzz mutator nests oracle_info.json at dataset/dataset_X/<N>/oracle_info.json
+    # case_id is like "dataset_1_9" → split into (dataset_name="dataset_1", case_num="9")
+    parts = case_id.rsplit("_", 1)
+    dataset_name, case_num = parts[0], parts[1]  # "dataset_1", "9"
+    oracle_path = wkdir / "dataset" / dataset_name / case_num / "oracle_info.json"
     if not oracle_path.exists():
         return None
     oracle = json.load(open(oracle_path))

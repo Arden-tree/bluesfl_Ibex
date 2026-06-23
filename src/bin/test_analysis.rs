@@ -35,6 +35,12 @@ enum MismatchType {
     WeMismatch(bool),
     WaddrMismatch(u32),
     WdataMismatch(u32),
+    /// DUT generated a load with wrong byte enable.
+    /// (addr, dut_be, expected_be)
+    LoadBeMismatch(u32, u32, u32),
+    /// Spike expected a synchronous trap at `oracle_pc` but DUT continued to `dut_pc`.
+    /// (dut_pc, oracle_pc)
+    TrapMismatch(u32, u32),
 }
 
 #[derive(Debug, Default)]
@@ -108,6 +114,19 @@ fn main() -> anyhow::Result<()> {
             let start_sig = "rvfi_rd_wdata_d";
             TestMetaData::new(start_scope, start_sig, start_time, &test_info, time_bound)
         }
+        MismatchType::LoadBeMismatch(_, _, _) => {
+            // Memory subsystem bug — start from load address RVFI signal.
+            let start_scope = "TOP.ibex_simple_system.u_top.u_ibex_top.u_ibex_core";
+            let start_sig = "rvfi_mem_addr";
+            TestMetaData::new(start_scope, start_sig, start_time, &test_info, time_bound)
+        }
+        MismatchType::TrapMismatch(_, _) => {
+            // Trap mismatch means the DUT didn't take the expected trap, so the PC
+            // diverged. Start trace from PC, same as PcMismatch.
+            let start_scope = "TOP.ibex_simple_system.u_top.u_ibex_top.u_ibex_core";
+            let start_sig = "rvfi_pc_wdata";
+            TestMetaData::new(start_scope, start_sig, start_time, &test_info, time_bound)
+        }
     };
 
     println!("{}", test_info);
@@ -119,6 +138,24 @@ fn main() -> anyhow::Result<()> {
 
 fn parse_hex_value(s: &str) -> anyhow::Result<u32, std::num::ParseIntError> {
     u32::from_str_radix(s, 16)
+}
+
+/// Parse the first hex token immediately following `prefix` in `line`.
+/// Accepts optional `0x`, returns 0 on missing/invalid.
+/// Examples (prefix → result):
+///   parse_hex_segment_after("with BE f but BE 1", "with BE ") → 15
+///   parse_hex_segment_after("at ISS PC: 100000 but ...", "ISS PC: ") → 1048576
+fn parse_hex_segment_after(line: &str, prefix: &str) -> Option<u32> {
+    let pos = line.find(prefix)?;
+    let after = &line[pos + prefix.len()..];
+    let tok = after.split_whitespace().next()?;
+    let cleaned = tok.trim_end_matches(',').trim_start_matches("0x");
+    parse_hex_value(cleaned).ok()
+}
+
+/// Backwards-compat alias used by the load-addr parser.
+fn parse_hex_segment(line: &str, prefix: &str) -> Option<u32> {
+    parse_hex_segment_after(line, prefix)
 }
 
 /// Parse "DUT: ff" or "DUT retired : ff" → 0xff
@@ -226,6 +263,21 @@ impl CoSimResult {
                     }
                 }
                 result.mismatch = Some(MismatchType::WdataMismatch(oracle_value.unwrap_or(0)));
+            } else if line.contains("DUT generated load at address") {
+                // Spike cosim format:
+                // "DUT generated load at address 10ef6c with BE f but BE 1 was expected"
+                let addr = parse_hex_segment(line, "address ")
+                    .or_else(|| parse_hex_segment(line, "address 0x"))
+                    .unwrap_or(0);
+                let dut_be = parse_hex_segment_after(line, "with BE ").unwrap_or(0);
+                let exp_be = parse_hex_segment_after(line, "but BE ").unwrap_or(0);
+                result.mismatch = Some(MismatchType::LoadBeMismatch(addr, dut_be, exp_be));
+            } else if line.contains("Synchronous trap was expected") {
+                // "Synchronous trap was expected at ISS PC: 100000 but the DUT didn't report one at PC 106404"
+                let oracle_pc = parse_hex_segment_after(line, "ISS PC: ").unwrap_or(0);
+                let dut_pc = parse_hex_segment_after(line, "at PC ").unwrap_or(0);
+                result.dut.pc = dut_pc;
+                result.mismatch = Some(MismatchType::TrapMismatch(dut_pc, oracle_pc));
             }
 
             // Parse DUT values — accept both "DUT PC:" and "DUT retired :" formats
@@ -507,6 +559,32 @@ impl TestInfoGenerator for TemplateTestInfoGenerator {
                         "Register write data mismatch detected: DUT wrote 0x{:08x} but the reference model expected 0x{:08x}.\n\n",
                         report.dut.w_data,
                         oracle_wdata
+                    ));
+                }
+            }
+            MismatchType::LoadBeMismatch(addr, dut_be, exp_be) => {
+                if let Some(instr) = current_instruction {
+                    output.push_str(&format!(
+                        "Now this core design is buggy when executing a instruction. {} this instruction issues a load at address 0x{:08x} with wrong byte-enable 0x{:x} (correct byte-enable should be 0x{:x}).\n\n",
+                        instr.instruction, addr, dut_be, exp_be
+                    ));
+                } else {
+                    output.push_str(&format!(
+                        "Load byte-enable mismatch detected: at address 0x{:08x}, DUT produced BE 0x{:x} but BE 0x{:x} was expected.\n\n",
+                        addr, dut_be, exp_be
+                    ));
+                }
+            }
+            MismatchType::TrapMismatch(dut_pc, oracle_pc) => {
+                if let Some(instr) = current_instruction {
+                    output.push_str(&format!(
+                        "Now this core design is buggy when executing a instruction. {} after this instruction, a synchronous trap was expected (trap target PC 0x{:08x}) but the DUT continued to PC 0x{:08x}.\n\n",
+                        instr.instruction, oracle_pc, dut_pc
+                    ));
+                } else {
+                    output.push_str(&format!(
+                        "Trap mismatch detected: ISS expected synchronous trap to PC 0x{:08x} but DUT continued to PC 0x{:08x}.\n\n",
+                        oracle_pc, dut_pc
                     ));
                 }
             }

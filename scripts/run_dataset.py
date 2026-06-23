@@ -139,15 +139,21 @@ def phase_compile(bugs, cfg):
                 logger.error("  编译失败")
                 continue
 
-            # 跑 cosim
+            # 跑 cosim（超时则标记为不能触发 mismatch）
             logger.info("  cosim...")
             for f in simdir.glob("coverage*.dat"):
                 os.remove(f)
-            r = run(["./Vibex_simple_system",
-                     "--meminit=ram,../../../examples/sw/benchmarks/coremark/coremark.elf",
-                     "-t", "-c", "3000",
-                     "--cov-start", "1", "--cov-end", "999999", "--cov-dir", "."],
-                    cwd=simdir, timeout=600)
+            try:
+                r = run(["./Vibex_simple_system",
+                         "--meminit=ram,../../../examples/sw/benchmarks/coremark/coremark.elf",
+                         "-t", "-c", "3000",
+                         "--cov-start", "1", "--cov-end", "999999", "--cov-dir", "."],
+                        cwd=simdir, timeout=600)
+            except subprocess.TimeoutExpired:
+                logger.warning("  cosim 超时（>10分钟），标记为不能触发 mismatch")
+                (out_dir / "no_mismatch").touch()
+                done_file.touch()
+                continue
             (out_dir / "mismatch_log.txt").write_text(r.stdout + (r.stderr or ""))
 
             if "mismatch" not in r.stdout.lower():

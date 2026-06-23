@@ -61,6 +61,11 @@ where
     test_info: String,
     vote_top_k: usize,
     vote_total: usize,
+    /// Confidence scores assigned by the Phase 2 navigating LLM via the
+    /// exit tool. When present, bypasses the standalone BlockReranker LLM
+    /// call (paper Section 3.4: "It then assigns each suspicious block a
+    /// confidence score between 0 and 1").
+    phase2_scores: Option<HashMap<u64, f64>>,
 }
 
 impl<'a, 'b, Parser, CT, MC, BC, BR, T> LLMAidTracer<'a, 'b, Parser, CT, MC, BC, BR, T>
@@ -109,6 +114,7 @@ where
             test_info: test_info.to_string(),
             vote_top_k,
             vote_total,
+            phase2_scores: None,
         }
     }
 
@@ -154,6 +160,25 @@ where
                 .map(|data| (data, 1.0))
                 .collect()
         };
+
+        // Fast path: Phase 2 navigating LLM already provided scores via exit tool.
+        // Skip the standalone BlockReranker LLM call (paper Section 3.4 alignment).
+        if let Some(scores) = self.phase2_scores.take() {
+            info!(
+                "Using Phase 2 LLM-provided scores ({} entries), skipping BlockReranker",
+                scores.len()
+            );
+            return self
+                .suspicious_blocks
+                .clone()
+                .into_iter()
+                .map(|data| {
+                    let bid = data.1.get_bid();
+                    let score = scores.get(&bid).copied().unwrap_or(0.0);
+                    (data, score)
+                })
+                .collect();
+        }
 
         if self.suspicious_blocks.len() < 2 {
             warn!(
@@ -786,6 +811,7 @@ where
             waveform_mgr: WaveformManager::new(wave_path),
             suspicious: Vec::new(),
             traversed: Vec::new(),
+            scores: HashMap::new(),
             done: false,
         }));
 
@@ -819,14 +845,14 @@ At each code block you visit, evaluate whether it could be the root cause of the
 
 3. append_block: Append the current code block to the suspicious queue. Call this whenever you suspect the current block may contain the bug — you do NOT need to be fully certain. You may call append_block multiple times on different blocks. All appended blocks will be ranked later by confidence.
 
-4. exit: End the analysis. Only call this when you have thoroughly inspected the relevant blocks.
+4. exit: End the analysis. You MUST provide a `scores` array containing one entry per appended block: `{{ "bid": <block_id>, "score": <confidence in [0.0, 1.0]> }}`. The block you believe is the true root cause should receive the highest score (e.g., 0.9-1.0); less likely candidates receive lower scores. Scores are used to rank the suspicious queue and produce the final Top-K list.
 
 # Workflow
 
 - Start by reading the driven signal values of the current block.
 - If a signal carries an unexpected value, use check_signals to trace it backward.
 - At each block you visit, ask: "Could this block be the root cause?" If yes or maybe, call append_block. Err on the side of marking suspicious blocks rather than missing candidates.
-- After exploring the relevant execution path, call exit.
+- After exploring the relevant execution path, call exit with a `scores` array covering every block you appended. Order scores by your confidence.
 
 Remember: the goal is to produce a ranked list of suspicious blocks. Calling append_block on 3-5 candidate blocks is normal and expected, not a sign of indecision."#,
             self.test_info, start.module, start.code, start.signals, avail_signals.iter().take(50).collect::<Vec<_>>()
@@ -857,10 +883,9 @@ Remember: the goal is to produce a ranked list of suspicious blocks. Calling app
 
         // 6. Collect suspicious queue (paper Section 3.4)
         // Top-K candidate pool = suspicious queue, i.e. blocks the LLM explicitly
-        // marked via append_block. The prompt encourages 3-5 marks; BlockReranker
-        // will assign each a confidence score in [0, 1] to produce the ranked list.
-        // `traversed` is kept in NavState only as an inspection log for debugging;
-        // it does NOT contribute to choices.
+        // marked via append_block. The navigating LLM assigns each a confidence
+        // score in [0, 1] via the exit tool's `scores` parameter; we bypass the
+        // standalone BlockReranker LLM call when those scores exist.
         let s = state.lock().unwrap();
         for (module, bid) in &s.suspicious {
             warn!("[Phase 2] Suspicious: {} (bid={})", module, bid);
@@ -870,11 +895,17 @@ Remember: the goal is to produce a ranked list of suspicious blocks. Calling app
                 }
             }
         }
+        let has_phase2_scores = !s.scores.is_empty();
+        let scores_map = s.scores.clone();
         info!(
-            "[Phase 2] {} suspicious blocks (choices pool); traversed {} blocks (not in choices)",
+            "[Phase 2] {} suspicious blocks (choices pool); traversed {} (log only); scores provided for {} blocks",
             s.suspicious.len(),
-            s.traversed.len()
+            s.traversed.len(),
+            scores_map.len()
         );
+        if has_phase2_scores {
+            self.phase2_scores = Some(scores_map);
+        }
     }
 }
 
