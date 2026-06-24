@@ -758,7 +758,14 @@ impl DataFlowBlockParser {
             dataflow_analyzer.get_all_from_always(unwrap_node!(ref_node, AlwaysConstruct).unwrap());
         all.iter().for_each(|(node, vars)| {
             blk.add_output_node(node.clone());
-            blk.nodes_dataflow.insert(node.clone(), vars.clone());
+            // Merge: an output node may have multiple assignment branches
+            // (e.g. reset + functional). Paper Algorithm 1 requires the
+            // complete I_s (union of all branch RHS signals). HashMap::insert
+            // would silently drop earlier branches — use entry API to union.
+            blk.nodes_dataflow
+                .entry(node.clone())
+                .and_modify(|existing| existing.extend(vars.clone()))
+                .or_insert_with(|| vars.clone());
             vars.iter().for_each(|var| {
                 blk.add_input_node(var.clone());
             });

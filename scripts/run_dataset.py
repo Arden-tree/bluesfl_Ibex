@@ -163,7 +163,8 @@ def phase_compile(bugs, cfg):
                 continue
 
             # 复制输出文件（不复制 trace——可能 24GB，太大了）
-            shutil.copy2(simdir / "mismatch_log.txt", out_dir / "mismatch_log.txt")
+            # Note: cosim 输出已通过 r.stdout 写入 out_dir/mismatch_log.txt，
+            # 不要从 simdir 复制同名文件（会覆盖真实输出）
             shutil.copy2(simdir / "sim.fst", out_dir / "sim.fst")
             if not (out_dir / "rm_params.tree.json").exists():
                 alt = ibex / "build/lowrisc_ibex_ibex_simple_system_0/sim-verilator/rm_params.tree.json"
@@ -177,7 +178,7 @@ def phase_compile(bugs, cfg):
             if Path(ta_bin).exists():
                 logger.info("  生成 test_info.json...")
                 r = run([ta_bin,
-                         f"--info-file={simdir}/mismatch_log.txt",
+                         f"--info-file={out_dir}/mismatch_log.txt",
                          f"--inst-trace={simdir}/trace_core_00000000.log",
                          f"--output-file={out_dir}/test_info.json",
                          "--time-step=2"], timeout=120)

@@ -415,8 +415,24 @@ impl CoverageTracker for VlcCoverageReport {
             Some(BlockType::Always(ctype)) => {
                 // Always Coverage should check ctype
                 if scope_name.and(time).is_some() {
+                    let ctype_dbg = format!("{:?}", ctype);
                     let scope_cov = self
                         .get_always_lines_coverage(ctype, scope_name.unwrap(), time.unwrap());
+
+                    // [DBG] log coverage query details
+                    let matching: Vec<usize> = scope_cov
+                        .iter()
+                        .filter(|lc| lc.line == lineno)
+                        .map(|lc| lc.count)
+                        .collect();
+                    let any_positive = scope_cov.iter().any(|lc| lc.count > 0);
+                    warn!(
+                        "[COV_DBG] ctype={} scope={} time={} lineno={} \
+                         matching_counts={:?} total_entries={} any_positive={}",
+                        ctype_dbg, scope_name.unwrap(), time.unwrap(), lineno,
+                        matching, scope_cov.len(), any_positive,
+                    );
+
                     // 1. Try exact lineno match
                     if let Some(count) = scope_cov
                         .iter()
