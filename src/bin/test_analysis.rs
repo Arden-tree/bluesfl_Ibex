@@ -101,7 +101,7 @@ fn main() -> anyhow::Result<()> {
     let meta_data: TestMetaData = match cosim_output.mismatch.as_ref().unwrap() {
         MismatchType::PcMismatch(_) => {
             let start_scope = "TOP.ibex_simple_system.u_top.u_ibex_top.u_ibex_core";
-            let start_sig = "rvfi_pc_wdata";
+            let start_sig = "pc_id";
             TestMetaData::new(start_scope, start_sig, start_time, &test_info, time_bound)
         }
         MismatchType::WeMismatch(_) | MismatchType::WaddrMismatch(_) => {
@@ -124,7 +124,7 @@ fn main() -> anyhow::Result<()> {
             // Trap mismatch means the DUT didn't take the expected trap, so the PC
             // diverged. Start trace from PC, same as PcMismatch.
             let start_scope = "TOP.ibex_simple_system.u_top.u_ibex_top.u_ibex_core";
-            let start_sig = "rvfi_pc_wdata";
+            let start_sig = "pc_id";
             TestMetaData::new(start_scope, start_sig, start_time, &test_info, time_bound)
         }
     };
