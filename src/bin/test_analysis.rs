@@ -244,7 +244,7 @@ impl CoSimResult {
                 // Semantically equivalent to WE_MISMATCH with DUT.wen=false, expected=true
                 result.dut.wen = false;
                 result.mismatch = Some(MismatchType::WeMismatch(true));
-            } else if line.contains("WADDR_MISMATCH") || line.to_lowercase().contains("write address mismatch") {
+            } else if line.contains("WADDR_MISMATCH") || line.to_lowercase().contains("write address mismatch") || line.to_lowercase().contains("write index mismatch") {
                 if oracle_value.is_none() {
                     if let (Some(d), Some(e)) = (parse_dut_hex(line), parse_expected_hex(line)) {
                         result.dut.w_addr = d;
