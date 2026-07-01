@@ -138,12 +138,30 @@ def main(cfg):
                     error_folders.append(cur_wkdir)
                     continue
 
-                # Step 2: Generate test_info.json if missing
+                # Step 2: Generate test_info.json if missing (or force-regen)
                 # 对齐论文 gen_test_info.py: 从 mismatch_log 解析 (sig, t, time_bound)
-                if not test_info_file.exists() and cfg.test_analysis:
+                # 当 test_analysis 二进制更新过 (例如修复了 start_sig 选择),
+                # 用 --regen-test-info 强制重新生成, 让 start_sig 跟着 test_analysis
+                # 的新逻辑走, 而不是用旧的缓存值。
+                need_regen = (cfg.regen_test_info
+                              or not test_info_file.exists()) and cfg.test_analysis
+                if need_regen:
                     try:
+                        if test_info_file.exists() and cfg.regen_test_info:
+                            old_sig = json.loads(test_info_file.read_text()).get(
+                                "start_sig", "?")
+                            backup = test_info_file.with_suffix(".json.bak")
+                            shutil.copy2(test_info_file, backup)
+                            logger.info(f"  regen: backup old test_info.json → {backup}")
+                        else:
+                            old_sig = None
                         generate_test_info(cur_wkdir, exe_path, cfg.test_analysis,
                                            cur_dir.parent, cfg.time_step)
+                        if test_info_file.exists():
+                            new_sig = json.loads(test_info_file.read_text()).get(
+                                "start_sig", "?")
+                            if old_sig is not None and new_sig != old_sig:
+                                logger.info(f"  regen: start_sig {old_sig} → {new_sig}")
                     except Exception as e:
                         logger.error(f"Error generating test_info: {e}")
                         error_folders.append(cur_wkdir)
@@ -441,6 +459,9 @@ if __name__ == '__main__':
     parser.add_argument("--only", nargs="+", default=None,
                         help="只处理指定 case 名 (如 --only dataset_0_0 dataset_0_1)")
     parser.add_argument("--no-sim", help="skip simulation rerun", action="store_true")
+    parser.add_argument("--regen-test-info", action="store_true",
+                        help="强制重新生成 test_info.json (覆盖旧的; 旧文件备份到 .json.bak). "
+                             "当 test_analysis 修复了 start_sig 选择后用这个让所有 case 跟着走.")
     parser.add_argument("--vote-total", default=1, type=int, help="vote total number")
     parser.add_argument("--vote-top-k", default=1, type=int, help="pick top-k choices")
     parser.add_argument("--time-step", default=2, type=int, help="time step for test_analysis")

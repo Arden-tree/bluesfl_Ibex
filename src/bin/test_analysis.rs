@@ -100,8 +100,12 @@ fn main() -> anyhow::Result<()> {
     let time_bound = start_time - 2 * ibex_cycle;
     let meta_data: TestMetaData = match cosim_output.mismatch.as_ref().unwrap() {
         MismatchType::PcMismatch(_) => {
+            // Paper-aligned: rvfi_pc_wdata is the cosim PC comparison signal at
+            // ibex_core top level (output port). Starting BFS here reaches all
+            // pipeline stages (250+ trace blocks). Using pc_id (internal if_stage
+            // signal) only traces 1-6 blocks stuck in if_stage.
             let start_scope = "TOP.ibex_simple_system.u_top.u_ibex_top.u_ibex_core";
-            let start_sig = "pc_id";
+            let start_sig = "rvfi_pc_wdata";
             TestMetaData::new(start_scope, start_sig, start_time, &test_info, time_bound)
         }
         MismatchType::WeMismatch(_) | MismatchType::WaddrMismatch(_) => {
@@ -122,9 +126,9 @@ fn main() -> anyhow::Result<()> {
         }
         MismatchType::TrapMismatch(_, _) => {
             // Trap mismatch means the DUT didn't take the expected trap, so the PC
-            // diverged. Start trace from PC, same as PcMismatch.
+            // diverged. Use rvfi_pc_wdata (paper-aligned) for deep BFS.
             let start_scope = "TOP.ibex_simple_system.u_top.u_ibex_top.u_ibex_core";
-            let start_sig = "pc_id";
+            let start_sig = "rvfi_pc_wdata";
             TestMetaData::new(start_scope, start_sig, start_time, &test_info, time_bound)
         }
     };
@@ -244,6 +248,11 @@ impl CoSimResult {
                 // Semantically equivalent to WE_MISMATCH with DUT.wen=false, expected=true
                 result.dut.wen = false;
                 result.mismatch = Some(MismatchType::WeMismatch(true));
+            } else if line.to_lowercase().contains("dut wrote") && line.to_lowercase().contains("write was not expected") {
+                // cpufuzz cosim format: "DUT wrote register x1 but a write was not expected"
+                // Semantically equivalent to WE_MISMATCH with DUT.wen=true, expected=false
+                result.dut.wen = true;
+                result.mismatch = Some(MismatchType::WeMismatch(false));
             } else if line.contains("WADDR_MISMATCH") || line.to_lowercase().contains("write address mismatch") || line.to_lowercase().contains("write index mismatch") {
                 if oracle_value.is_none() {
                     if let (Some(d), Some(e)) = (parse_dut_hex(line), parse_expected_hex(line)) {

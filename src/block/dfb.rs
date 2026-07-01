@@ -263,19 +263,11 @@ impl BlockParser for DataFlowBlockParser {
                 _ => self.new_block(tree, &module_name, scope, node.clone()),
             };
             if let Some(mut block) = block_opt {
-                // check block covered?
-
-                if self.param_coverage_tracker.is_some() {
-                    match self.check_block_cover_state(
-                        module_name.as_str(),
-                        tree,
-                        code_content,
-                        &block,
-                    ) {
-                        CoverState::Covered => {}
-                        _ => continue,
-                    }
-                }
+                // NOTE: Do NOT filter blocks by coverage during structural parsing.
+                // Coverage is a runtime BFS filter, not a structural filter.
+                // Filtering here permanently removes blocks from the database,
+                // which breaks BFS when the starting signal's assign happens to
+                // be uncovered in the golden coverage (e.g. rvfi_pc_wdata).
 
                 let var_nodes = block
                     .get_input_nodes()

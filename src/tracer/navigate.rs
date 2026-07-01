@@ -289,6 +289,24 @@ impl Tool for NavExit {
 
     async fn call(&self, args: Self::Args) -> Result<Self::Output, Self::Error> {
         let mut state = self.state.lock().map_err(|e| NavError::Msg(e.to_string()))?;
+
+        // Gate: force LLM to append at least MIN_CANDIDATES blocks before exit.
+        // Replaces system-side fallback padding (paper Section 3.4: the LLM
+        // agent alone determines the candidate pool).
+        const MIN_CANDIDATES: usize = 10;
+        if state.suspicious.len() < MIN_CANDIDATES {
+            let need = MIN_CANDIDATES - state.suspicious.len();
+            return Ok(format!(
+                "EXIT REJECTED: You have marked only {} block(s) as suspicious. \
+                 At least {} candidates are required. \
+                 Please use check_signals to explore {} more block(s), then \
+                 append_block to mark them, then call exit again.",
+                state.suspicious.len(),
+                MIN_CANDIDATES,
+                need,
+            ));
+        }
+
         let mut stored = 0;
         for entry in &args.scores {
             // Clamp to [0, 1]

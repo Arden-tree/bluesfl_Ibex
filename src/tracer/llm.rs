@@ -847,14 +847,24 @@ At each code block you visit, evaluate whether it could be the root cause of the
 
 4. exit: End the analysis. You MUST provide a `scores` array containing one entry per appended block: `{{ "bid": <block_id>, "score": <confidence in [0.0, 1.0]> }}`. The block you believe is the true root cause should receive the highest score (e.g., 0.9-1.0); less likely candidates receive lower scores. Scores are used to rank the suspicious queue and produce the final Top-K list.
 
-# Workflow
+# Workflow (MANDATORY — read carefully)
 
-- Start by reading the driven signal values of the current block.
-- If a signal carries an unexpected value, use check_signals to trace it backward.
-- At each block you visit, ask: "Could this block be the root cause?" If yes or maybe, call append_block. Err on the side of marking suspicious blocks rather than missing candidates.
-- After exploring the relevant execution path, call exit with a `scores` array covering every block you appended. Order scores by your confidence.
+The goal is a HIGH-RECALL ranked list. A bug-hunt that exits after visiting 1-2 modules is a FAILURE — even a confident guess must be backed by exploring the surrounding dataflow. You MUST follow these rules:
 
-Remember: the goal is to produce a ranked list of suspicious blocks. Calling append_block on 3-5 candidate blocks is normal and expected, not a sign of indecision."#,
+- Step 1: read_values on the current block's driven signals to confirm the failure.
+- Step 2: check_signals to trace the driving signal backward to its producer block.
+- Step 3: Repeat. From the new block, again read_values and check_signals on its drivers. Continue this backward trace for AT LEAST 3 hops (visit at least 4 distinct modules total).
+- Step 4: At EVERY block you visit (not just the obvious one), call append_block if there is ANY plausible connection to the fault — including: the failing module itself, its driver modules, control/signal producers that gate it, decoder/alu/multdiv units that feed it. Err heavily on the side of appending. Aim to append 8-15 candidate blocks before exiting.
+- Step 5: Only after visiting >=4 distinct modules AND appending >=8 blocks, call exit with scores for every appended block.
+
+# Critical anti-shortcut rules
+
+- Do NOT exit after finding a single "obvious" suspect. The first obvious suspect is often a symptom, not the root cause — its driver may contain the real bug.
+- Do NOT skip append_block on a block just because you think another block is more suspicious. The Top-K metric needs a wide candidate pool.
+- Do NOT call exit until you have called check_signals at least 3 times on different signals.
+- If the current block looks buggy, STILL trace its inputs backward — the bug may be in what feeds it.
+
+Remember: a thorough bug-hunt produces 8-15 ranked candidates. A premature exit with 1-2 candidates is the failure mode we are explicitly avoiding."#,
             self.test_info, start.module, start.code, start.signals, avail_signals.iter().take(50).collect::<Vec<_>>()
         );
 
@@ -886,6 +896,12 @@ Remember: the goal is to produce a ranked list of suspicious blocks. Calling app
         // marked via append_block. The navigating LLM assigns each a confidence
         // score in [0, 1] via the exit tool's `scores` parameter; we bypass the
         // standalone BlockReranker LLM call when those scores exist.
+        //
+        // No system-side fallback padding. The NavExit tool enforces a minimum
+        // candidate count (MIN_CANDIDATES=10): if the LLM tries to exit with
+        // fewer than 10 append_block calls, exit is rejected and the LLM is
+        // asked to explore more. This aligns with the paper's design where the
+        // LLM agent alone determines the candidate pool.
         let s = state.lock().unwrap();
         for (module, bid) in &s.suspicious {
             warn!("[Phase 2] Suspicious: {} (bid={})", module, bid);
@@ -895,6 +911,7 @@ Remember: the goal is to produce a ranked list of suspicious blocks. Calling app
                 }
             }
         }
+
         let has_phase2_scores = !s.scores.is_empty();
         let scores_map = s.scores.clone();
         info!(
@@ -1100,7 +1117,7 @@ where
             token_price.unwrap_or(0.)
         );
 
-        let choices = reranked_blocks
+        let mut choices = reranked_blocks
             .clone()
             .into_iter()
             .map(|(((_sig, _time), block), score)| {
@@ -1112,6 +1129,17 @@ where
                     .unwrap()
             })
             .collect::<Vec<_>>();
+
+        // Sort choices by score descending so JSON output matches the
+        // ranked list semantics of paper Section 3.4. cal_metric.rs
+        // re-sorts defensively, but this keeps the file human-readable
+        // and consistent with any Python reader.
+        choices.sort_by(|a, b| {
+            b.score
+                .unwrap_or(0.0)
+                .partial_cmp(&a.score.unwrap_or(0.0))
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         LocalizationResultBuilder::default()
             .bug_id(self.bug_id.clone())

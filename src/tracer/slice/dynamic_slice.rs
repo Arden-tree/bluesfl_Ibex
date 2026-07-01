@@ -164,9 +164,15 @@ where
             .into_iter()
             .filter(|&node| node.get_text() == sig.get_text())
             .filter(|&node| {
-                covered_lines
-                    .iter()
-                    .any(|(line, count)| node.get_locate().line == *line && *count > 0)
+                if covered_lines.is_empty() {
+                    // Coverage data unavailable for this block (likely generate-for-loop
+                    // line number mismatch). Trust dataflow — don't gate on coverage.
+                    true
+                } else {
+                    covered_lines
+                        .iter()
+                        .any(|(line, count)| node.get_locate().line == *line && *count > 0)
+                }
             })
             .collect::<Vec<_>>();
 

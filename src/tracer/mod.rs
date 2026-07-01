@@ -112,8 +112,8 @@ where
     fn get_block(&self, scope_name: &str, sig: &NodeID) -> anyhow::Result<Vec<(String, Vec<T>)>> {
         // TODO: I'm not sure whether to return a list of blocks, as `parameter` configuration may cause that two modules that have the same output signal.
 
-        let scope_blocks = self
-            .get_scope_blocks(scope_name)?
+        let all_blocks = self.get_scope_blocks(scope_name)?;
+        let scope_blocks = all_blocks
             .into_iter()
             .filter(|block| {
                 block
@@ -347,9 +347,18 @@ where
                     let vars: Vec<_> = res.into_iter().collect();
                     // vars.sort_by(|a, b| a.cmp(b));
 
+                    // For SEQ blocks, next_time != time, so the same signal at
+                    // next_time is a NEW state (register holds value across cycles).
+                    // The output-node filter below would incorrectly strip the
+                    // SEQ self-loop (paper Algorithm 1 line 18: return ({sig}, t-1)).
+                    // Only apply the re-entry guard when time doesn't advance.
+                    let time_advances = next_time != time;
                     let mut vars = vars
                         .into_iter()
                         .filter(|v| {
+                            if time_advances {
+                                return true;
+                            }
                             block
                                 .get_output_nodes()
                                 .iter()
@@ -518,8 +527,6 @@ where
 
             // FIXME: get_block ignored covered block.
             let get_block_result = self.get_block_result(&cur_scope, &head_sig);
-            warn!("TRACE: get_block_result for scope={}, sig={}, results={}", cur_scope, head_sig.get_text(),
-                get_block_result.iter().map(|(s, blocks)| format!("{}:{}", s, blocks.len())).collect::<Vec<_>>().join(", "));
 
             for (block_scope, block) in get_block_result
                 .iter()
@@ -548,7 +555,6 @@ where
                         block.get_bid(),
                         cur_time
                     );
-                    warn!("TRACE: block bid={} block.scope={} passed_scope={}", block.get_bid(), block.get_scope(), cur_scope);
                     if let Some((next_scope, Some(next_vars_with_time), early_stop)) = self
                         .get_driven_signals_fixpoint(block, &cur_scope, cur_time, &head_sig)
                         .await
