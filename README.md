@@ -22,13 +22,12 @@
 ### 1.1 代码仓库
 
 ```bash
-# BluesFL 代码仓
-git clone https://github.com/pointerliu/bluesfl.git
-cd bluesfl
-git checkout feat/ibex-testing-framework
+# BluesFL 定位器（Ibex 适配版，含完整两阶段 Phase 1 + Phase 2）
+git clone https://github.com/Arden-tree/BlueSFL_ibex.git ~/bluesfl
+cd ~/bluesfl
 
-# Ibex RISC-V 处理器
-git clone https://github.com/lowRISC/ibex.git ~/ibex
+# Ibex RISC-V 处理器（已打 patch：per-cycle coverage dump + cosim checker + bug 注入）
+git clone https://github.com/Arden-tree/ibex-cosim-patched.git ~/ibex
 
 # Spike ISS（ibex_cosim fork，用作参考模型）
 git clone https://github.com/lowRISC/ibex-spike-cosim.git ~/ibex-spike-cosim
@@ -38,10 +37,32 @@ cmake .. -DCMAKE_INSTALL_PREFIX=../install
 make -j$(nproc) && make install
 ```
 
-### 1.2 编译 BluesFL
+### 1.2 Verilator
+
+需要从源码编译 Verilator >= 5.0（本仓库测试使用 **5.048**）：
 
 ```bash
-cd bluesfl
+git clone https://github.com/verilator/verilator.git
+cd verilator
+git checkout v5.048
+autoconf
+./configure
+make -j$(nproc)
+sudo make install
+```
+
+验证：
+```bash
+verilator --version
+# Verilator 5.048 2026-04-26
+```
+
+> 注意：系统 apt 源的 Verilator 4.x 不支持 per-cycle coverage，必须用 5.x。
+
+### 1.3 编译 BluesFL
+
+```bash
+cd ~/bluesfl
 cargo build --bin sv_analysis --bin test_analysis
 ```
 
@@ -49,18 +70,12 @@ cargo build --bin sv_analysis --bin test_analysis
 - `target/debug/sv_analysis` — 定位器（Phase 1 BFS + Phase 2 LLM 导航）
 - `target/debug/test_analysis` — 测试报告生成器（从 cosim 输出自动生成）
 
-### 1.3 编译 Ibex Co-simulation
+### 1.4 编译 Ibex Co-simulation
 
-需要带 `--coverage` 标志编译 Verilator 仿真：
+patched Ibex 已在 `ibex_simple_system_cosim.core` 中启用 coverage，直接编译即可：
 
 ```bash
 cd ~/ibex
-
-# 确认 fusesoc 配置文件已启用 coverage：
-# dv/verilator/simple_system_cosim/ibex_simple_system_cosim.core 中需要有：
-#   - '--coverage'
-#   - '-DVM_COVERAGE=1'
-
 fusesoc --cores-root=. run --target=sim \
     --tool=verilator lowrisc:ibex:ibex_simple_system_cosim
 ```
@@ -70,19 +85,18 @@ fusesoc --cores-root=. run --target=sim \
 ~/ibex/build/lowrisc_ibex_ibex_simple_system_cosim_0/sim-verilator/Vibex_simple_system
 ```
 
-### 1.4 CoreMark 测试程序
+### 1.5 CoreMark 测试程序
 
 ```bash
-# CoreMark ELF 应位于：
+# CoreMark ELF 已包含在 patched Ibex 仓库中：
 # ~/ibex/examples/sw/benchmarks/coremark/coremark.elf
-# 若不存在，按 Ibex 文档编译。
 ```
 
-### 1.5 环境变量
+### 1.6 环境变量
 
 ```bash
 # API 配置（bluesfl 根目录下）
-cat > bluesfl/.env << 'EOF'
+cat > ~/bluesfl/.env << 'EOF'
 API_KEY=你的API密钥
 API_BASE=https://api.deepseek.com
 MODEL=deepseek-v4-pro
@@ -90,6 +104,25 @@ EOF
 
 # Block manager 需要此变量
 export SV_ANALYSIS_HOME=~/bluesfl
+```
+
+### 1.7 内存不足（OOM）处理
+
+`sv_analysis` 启动时会加载所有 coverage 文件到内存。若机器内存 <= 8GB，702 个 coverage 文件（~7.6GB）会导致 OOM。
+
+**解决方案：** 只保留 BFS 时间窗口内的 coverage 文件（`time_bound` 到 `start_time`）：
+
+```bash
+# 以 case 0 为例：time_bound=11, start_time=19
+SIMDIR=~/ibex/build/lowrisc_ibex_ibex_simple_system_cosim_0/sim-verilator
+mkdir -p /tmp/cov_subset
+for t in $(seq 11 2 19); do
+    ln -sf "$SIMDIR/coverage_${t}_seq.dat" /tmp/cov_subset/
+done
+cp "$SIMDIR/rm_params.tree.json" /tmp/cov_subset/
+ln -sf "$SIMDIR/sim.fst" /tmp/cov_subset/sim.fst
+
+# 后续 --coverage-path 指向 /tmp/cov_subset
 ```
 
 ---
